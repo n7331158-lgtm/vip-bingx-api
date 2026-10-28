@@ -1,4 +1,4 @@
-const crypto = require("crypto");
+﻿const crypto = require("crypto");
 
 const API_KEY = process.env.BINGX_API_KEY || "";
 const SECRET_KEY = process.env.BINGX_SECRET_KEY || "";
@@ -246,7 +246,7 @@ async function tryFetchVolume(uid, timeParams) {
 // 一次查多個 UID 的指定月份交易額、資產、KYC、是否為邀請用戶。
 // 受 Vercel 10 秒限制：每批最多 10 個 UID，超過時間預算的 UID 會標記為 timeout，下次再查。
 const BATCH_MAX = 10;
-const BATCH_BUDGET_MS = 7500;
+const BATCH_BUDGET_MS = Number(process.env.BATCH_BUDGET_MS || 20000); // vercel.json 設 maxDuration 60 秒
 
 async function volumeForRange(uid, range) {
   for (const tp of [{ startTime: range.startMs, endTime: range.endMs }, { startTime: range.startTime, endTime: range.endTime }]) {
@@ -263,7 +263,7 @@ async function snapshotUid(uid, range) {
   if (relationRaw?.code !== 0 && superiorRaw?.code !== 0) return { uid: cleanUid, status: "api_error", message: relationRaw?.msg || superiorRaw?.msg };
   const invited = (relationRaw?.code === 0 && relationRaw?.data?.inviteResult === true) || (superiorRaw?.code === 0 && superiorRaw?.data?.inviteResult === true);
   const rd = relationRaw?.data || {};
-  const base = { uid: cleanUid, invited, kyc: rd.kycResult === true ? "已完成" : rd.kycResult === false ? "未完成" : "", balance: rd.balanceVolume ?? "", registerDateTime: rd.registerDateTime || "" };
+  const base = { uid: cleanUid, invited, kyc: String(rd.kycResult) === "true" ? "已完成" : String(rd.kycResult) === "false" ? "未完成" : "", balance: rd.balanceVolume ?? "", registerDateTime: rd.registerDateTime || "" };
   if (!invited) return { ...base, status: "not_invited" };
   const vol = await volumeForRange(cleanUid, range);
   if (!vol.ok) return { ...base, status: "volume_unavailable" };
@@ -283,7 +283,7 @@ async function batchSnapshot(uids, month) {
       catch (e) { out[k] = { uid: uids[k], status: "error", message: e.message }; }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(5, uids.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(3, uids.length) }, worker)); // 控制併發，避免 BingX 20 次/秒限制
   return { month: range.month, checkedAt: new Date().toISOString(), rows: out };
 }
 
@@ -303,7 +303,95 @@ function toCsv(result) {
 
 function tokenOk(req) {
   const need = process.env.ADMIN_TOKEN || "";
-  return need && String(req.query.token || "") === need;
+  const got = String(req.headers?.["x-admin-token"] || req.query.token || "");
+  if (!need || got.length !== need.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(need));
+}
+
+// ── 單一會員明細（管理台會員頁用）──
+// BingX 代理 API 不提供邀請用戶的逐筆成交，只到「每日交易額」層級；這裡回傳：
+// 帳戶狀態、最近 20 個有交易的日子（含各業務線拆分與佣金）、近 90 天入金紀錄。
+function ymd(ms) { const p = taipeiDateParts(new Date(ms)); return `${p.y}${p.m}${p.d}`; }
+
+async function dailyWindow(uid, startMs, endMs) {
+  const formats = [{ startTime: startMs, endTime: endMs }, { startTime: ymd(startMs), endTime: ymd(endMs) }];
+  let lastMsg = null;
+  for (const tp of formats) {
+    const out = []; let ok = true; let agent = null;
+    for (let p = 1; p <= 3; p++) {
+      const d = await fetchBingX("/openApi/agent/v1/reward/commissionDataList", { uid, ...tp, pageIndex: p, pageSize: 100 });
+      if (d?.code !== 0) { ok = false; lastMsg = d?.msg; break; }
+      agent = agent || d?.data?.currentAgentUid || null;
+      const recs = extractRecords(d); out.push(...recs);
+      const total = d?.data?.total;
+      if (!(total ? p * 100 < total : recs.length === 100)) break;
+    }
+    if (ok) return { ok: true, records: out, agent };
+  }
+  return { ok: false, records: [], msg: lastMsg };
+}
+
+function toMs(t) {
+  if (t == null || t === "") return null;
+  if (typeof t === "number" || /^\d{10,13}$/.test(String(t))) return String(t).length === 10 ? +t * 1000 : +t;
+  const ms = Date.parse(t); return Number.isFinite(ms) ? ms : null;
+}
+
+async function depositsFor(uid, agentUid) {
+  if (!agentUid) return { ok: false, list: [], note: "缺少代理 UID（可在 Vercel 設定 AGENT_UID 環境變數）" };
+  const now = Date.now(), start = now - 89 * 864e5;
+  const formats = [{ startTime: start, endTime: now }, { startTime: ymd(start), endTime: ymd(now) }];
+  let lastMsg = null;
+  for (const tp of formats) {
+    const list = []; let ok = true;
+    for (let p = 1; p <= 5; p++) {
+      const d = await fetchBingX("/openApi/agent/v1/asset/depositDetailList", { uid: agentUid, bizType: 1, ...tp, pageIndex: p, pageSize: 100 });
+      if (d?.code !== 0) { ok = false; lastMsg = d?.msg; break; }
+      const recs = extractRecords(d);
+      for (const r of recs) if (String(r.uid) === String(uid)) list.push({ at: toMs(r.bizTime) ? new Date(toMs(r.bizTime)).toISOString() : null, currency: r.currencyName || "", amount: r.currencyAmountVolume ?? "", type: r.assetTypeName || "入金" });
+      const total = d?.data?.total;
+      if (!(total ? p * 100 < total : recs.length === 100)) break;
+    }
+    if (ok) return { ok: true, list };
+  }
+  return { ok: false, list: [], note: lastMsg || "入金紀錄查詢失敗" };
+}
+
+async function memberDetail(uid) {
+  const cleanUid = String(uid || "").trim();
+  if (!/^\d{4,20}$/.test(cleanUid)) return { ok: false, error: "UID 格式不正確" };
+  const relation = await callInviteRelationCheck(cleanUid);
+  const rd = relation?.code === 0 ? (relation.data || {}) : null;
+  const now = Date.now();
+  const windows = []; for (let i = 0; i < 6; i++) windows.push([now - (i + 1) * 30 * 864e5 + 1, now - i * 30 * 864e5]);
+  let days = []; let agent = process.env.AGENT_UID || null; let dailyOk = false; let dailyMsg = null;
+  for (let g = 0; g < 6 && days.length < 20; g += 3) {
+    const res = await Promise.all(windows.slice(g, g + 3).map(([a, b]) => dailyWindow(cleanUid, a, b)));
+    for (const r of res) {
+      if (r.ok) dailyOk = true; else dailyMsg = r.msg;
+      agent = agent || r.agent;
+      for (const x of r.records) {
+        const ms = toMs(x.commissionTime); const vol = n(x.tradingVolume);
+        if (!ms || vol <= 0) continue;
+        const p = taipeiDateParts(new Date(ms));
+        days.push({ date: `${p.y}-${p.m}-${p.d}`, ms, volume: vol, swap: x.swapTradingVolume != null ? n(x.swapTradingVolume) : null, spot: x.spotTradingVolume != null ? n(x.spotTradingVolume) : null, std: x.stdTradingVolume != null ? n(x.stdTradingVolume) : null, copy: x.extCopyTradingVolume != null ? n(x.extCopyTradingVolume) : null, mt5: x.mt5TradingVolume != null ? n(x.mt5TradingVolume) : null, commission: n(x.commissionVolume) });
+      }
+    }
+  }
+  const seen = new Set();
+  days = days.sort((a, b) => b.ms - a.ms).filter((d) => (seen.has(d.date) ? false : seen.add(d.date))).slice(0, 20);
+  const deposits = await depositsFor(cleanUid, agent);
+  return {
+    ok: true, uid: cleanUid, checkedAt: new Date().toISOString(),
+    account: rd ? {
+      invited: rd.inviteResult === true, directInvitation: rd.directInvitation ?? null,
+      kyc: String(rd.kycResult) === "true", balance: rd.balanceVolume ?? null, deposit: rd.deposit ?? null, trade: rd.trade ?? null,
+      registerAt: toMs(rd.registerDateTime) ? new Date(toMs(rd.registerDateTime)).toISOString() : null, userLevel: rd.userLevel ?? null,
+    } : null,
+    accountError: rd ? null : (relation?.msg || "查詢失敗"),
+    days, dailyOk, dailyError: dailyOk ? null : dailyMsg,
+    deposits,
+  };
 }
 
 // ── 主驗證函式 ──
@@ -409,6 +497,7 @@ module.exports = async (req, res) => {
     if (action === "batch") {
       if (!process.env.ADMIN_TOKEN) return res.status(503).json({ ok: false, error: "尚未設定 ADMIN_TOKEN 環境變數" });
       if (!tokenOk(req)) return res.status(401).json({ ok: false, error: "管理密鑰不正確" });
+      res.setHeader("Cache-Control", "no-store");
       const uids = String(req.query.uids || "").split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
       if (!uids.length) return res.status(400).json({ ok: false, error: "請提供 uids" });
       if (uids.length > BATCH_MAX) return res.status(400).json({ ok: false, error: `每批最多 ${BATCH_MAX} 個 UID` });
@@ -422,6 +511,13 @@ module.exports = async (req, res) => {
         return res.status(200).send(toCsv(result));
       }
       return res.status(200).json({ ok: true, ...result });
+    }
+
+    if (action === "detail") {
+      if (!process.env.ADMIN_TOKEN) return res.status(503).json({ ok: false, error: "尚未設定 ADMIN_TOKEN 環境變數" });
+      if (!tokenOk(req)) return res.status(401).json({ ok: false, error: "管理密鑰不正確" });
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(200).json(await memberDetail(uid));
     }
 
     // 設定 ADMIN_TOKEN 後，debug / test 需要帶 token，避免公開暴露除錯資訊
@@ -490,3 +586,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({ ok:false, valid:false, error: "伺服器錯誤", detail: err.message, checkedAt: new Date().toISOString() });
   }
 };
+
+// 給 api/cron.js 共用
+module.exports.snapshotUid = snapshotUid;
+module.exports.monthRangeFor = monthRangeFor;
