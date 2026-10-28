@@ -1,0 +1,1227 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>VIP 群管理台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+
+/* Layout: operator console. Header band with data freshness → KPI filter strip → member ledger table; member detail opens as a right-side drawer. */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --surface-2:#E9EDF2; --line:#D6DCE5; --line-2:#C3CBD7;
+  --ink:#142033; --ink-2:#4A576E; --ink-3:#77849A;
+  --accent:#2A4DB3; --accent-ink:#FFFFFF; --accent-soft:#E3E9FA;
+  --gold:#9C6A0E; --gold-soft:#F6EAD1;
+  --ok:#1C7A4B; --ok-bg:#E1F2E8; --warn:#935C00; --warn-bg:#FAEFD6;
+  --crit:#B13529; --crit-bg:#FBE4E1; --pend:#575C92; --pend-bg:#E8E9F5; --mute-bg:#E9ECF0;
+  --shadow:0 18px 50px rgba(20,32,51,.18);
+  --f-sans:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono","Noto Sans TC",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D131C; --surface:#141C28; --surface-2:#1B2533; --line:#283446; --line-2:#36445A;
+  --ink:#E5EAF2; --ink-2:#A8B3C4; --ink-3:#7A879B;
+  --accent:#8AA6FF; --accent-ink:#0D131C; --accent-soft:#1E2A4A;
+  --gold:#E2B256; --gold-soft:#33280F;
+  --ok:#5CC88E; --ok-bg:#11301F; --warn:#E8B54E; --warn-bg:#33270D; --crit:#F27F72; --crit-bg:#3A1814; --pend:#AEB2EA; --pend-bg:#23263F; --mute-bg:#1F2835;
+  --shadow:0 18px 50px rgba(0,0,0,.5); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0D131C; --surface:#141C28; --surface-2:#1B2533; --line:#283446; --line-2:#36445A;
+  --ink:#E5EAF2; --ink-2:#A8B3C4; --ink-3:#7A879B;
+  --accent:#8AA6FF; --accent-ink:#0D131C; --accent-soft:#1E2A4A;
+  --gold:#E2B256; --gold-soft:#33280F;
+  --ok:#5CC88E; --ok-bg:#11301F; --warn:#E8B54E; --warn-bg:#33270D; --crit:#F27F72; --crit-bg:#3A1814; --pend:#AEB2EA; --pend-bg:#23263F; --mute-bg:#1F2835;
+  --shadow:0 18px 50px rgba(0,0,0,.5); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{text-wrap:balance;margin:0}
+
+/* header */
+.top{background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding-block:14px}
+.brand{display:flex;align-items:center;gap:10px}
+.mark{font-family:var(--f-mono);font-weight:600;font-size:11px;letter-spacing:.14em;color:var(--gold);background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);padding:3px 7px;border-radius:4px}
+.brand h1{font-size:18px;font-weight:700;letter-spacing:.02em}
+.fresh{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink-2);margin-left:auto}
+.fresh b{font-weight:500;color:var(--ink)}
+.fresh .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px;background:var(--ink-3)}
+.fresh .dot.ok{background:var(--ok)} .fresh .dot.warn{background:var(--warn)}
+.nav{background:var(--surface);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;gap:4px;overflow-x:auto}
+.nav a{padding:10px 14px;color:var(--ink-2);text-decoration:none;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+.nav a[aria-current="page"]{color:var(--ink);border-color:var(--accent)}
+.nav a:hover{color:var(--ink)}
+
+main .wrap{padding-block:20px 60px;display:flex;flex-direction:column;gap:18px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .grow{flex:1 1 200px;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>span{font-size:12px;color:var(--ink-2);font-weight:500}
+.field small{color:var(--ink-3);font-size:12px}
+input[type=text],input[type=number],input[type=month],input[type=datetime-local],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line-2);border-radius:6px;padding:7px 10px;min-height:36px;width:100%;min-width:0}
+textarea{min-height:80px;resize:vertical}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:7px 14px;border-radius:6px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07)}
+.btn.danger{color:var(--crit);border-color:color-mix(in srgb,var(--crit) 45%,transparent)}
+.btn.small{min-height:30px;padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.month-tag{font-size:12px;color:var(--ink-2)}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px}
+.kpi{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px 11px;display:flex;flex-direction:column;gap:2px;position:relative}
+.kpi:hover{border-color:var(--line-2)}
+.kpi[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.kpi .k-n{font-family:var(--f-mono);font-size:26px;font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi .k-l{font-size:13px;font-weight:600}
+.kpi .k-s{font-size:11.5px;color:var(--ink-3)}
+.kpi::before{content:"";position:absolute;left:14px;top:0;width:22px;height:3px;border-radius:0 0 3px 3px;background:var(--tone,var(--ink-3))}
+.t-ok{--tone:var(--ok)} .t-warn{--tone:var(--warn)} .t-crit{--tone:var(--crit)} .t-pend{--tone:var(--pend)} .t-mute{--tone:var(--ink-3)} .t-acc{--tone:var(--accent)}
+
+/* table */
+.ledger{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ledger-head{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ledger-head h2{font-size:15px}
+.ledger-head .meta{font-size:12px;color:var(--ink-3)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:980px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:11.5px;font-weight:600;color:var(--ink-3);letter-spacing:.06em;background:var(--surface-2);white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:color-mix(in srgb,var(--accent-soft) 45%,transparent)}
+tbody tr:last-child td{border-bottom:0}
+td.sev{box-shadow:inset 3px 0 0 var(--tone,transparent)}
+td.r,th.r{text-align:right}
+.who b{display:block;font-weight:600}
+.who span{font-size:12px;color:var(--ink-3)}
+.uid{display:inline-flex;align-items:center;gap:6px}
+.vchip{font-size:10.5px;padding:1px 6px;border-radius:3px;font-family:var(--f-sans);font-weight:600}
+.vchip.y{color:var(--ok);background:var(--ok-bg)} .vchip.n{color:var(--warn);background:var(--warn-bg)}
+.prog{display:flex;align-items:center;gap:8px;min-width:130px}
+.bar{flex:1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--warn);border-radius:3px}
+.bar i.full{background:var(--ok)}
+.prog .pct{font-family:var(--f-mono);font-size:12px;color:var(--ink-2);min-width:38px;text-align:right}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{color:var(--ok);background:var(--ok-bg)} .pill.warn{color:var(--warn);background:var(--warn-bg)}
+.pill.crit{color:var(--crit);background:var(--crit-bg)} .pill.pend{color:var(--pend);background:var(--pend-bg)}
+.pill.mute{color:var(--ink-2);background:var(--mute-bg)}
+.sub{display:block;font-size:11.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:11.5px;padding:2px 7px;border-radius:4px;border:1px solid var(--line-2);color:var(--ink-2);white-space:nowrap}
+.chip.crit{border-color:color-mix(in srgb,var(--crit) 40%,transparent);color:var(--crit)}
+.chip.warn{border-color:color-mix(in srgb,var(--warn) 40%,transparent);color:var(--warn)}
+.chip.mute{color:var(--ink-3)}
+.demo{font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--gold);border:1px dashed var(--gold);padding:0 4px;border-radius:3px;margin-left:6px;vertical-align:1px}
+.empty{padding:40px 20px;text-align:center;color:var(--ink-2);display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty h3{font-size:16px;color:var(--ink)}
+.empty p{margin:0;max-width:46ch}
+
+/* panels */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-size:15px}
+.panel h2 + p,.panel .desc{margin:0;color:var(--ink-2);font-size:13px}
+.panel code{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.check{display:flex;align-items:center;gap:8px;font-size:13px}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 12px;margin:0}
+.preview{border:1px solid var(--accent);background:color-mix(in srgb,var(--accent-soft) 50%,var(--surface))}
+.stat-row{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px}
+.stat-row b{font-family:var(--f-mono);font-size:16px;margin-right:4px}
+.mini{width:100%;min-width:0;font-size:12.5px}
+.mini table{min-width:0}
+.mini th,.mini td{padding:6px 8px}
+.mini tbody tr{cursor:default}
+.list-plain{margin:0;padding-left:18px;color:var(--ink-2);font-size:12.5px;max-height:140px;overflow:auto}
+.rule-sentence{font-size:14px;background:var(--surface-2);border-radius:6px;padding:12px 14px;margin:0}
+.rule-sentence b{font-family:var(--f-mono)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,16,26,.42);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--bg);z-index:41;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.d-head{background:var(--surface);border-bottom:1px solid var(--line);padding:14px 18px;display:flex;gap:12px;align-items:flex-start}
+.d-head .t{flex:1;min-width:0}
+.d-head h2{font-size:18px}
+.d-head .code{font-family:var(--f-mono);font-size:12px;color:var(--ink-3)}
+.d-head .chips{margin-top:6px}
+.d-body{overflow-y:auto;padding:16px 18px 40px;display:flex;flex-direction:column;gap:14px}
+.d-sec{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.d-sec h3{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:.04em}
+.big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big .num{font-size:28px;font-weight:600}
+.big .of{color:var(--ink-3);font-size:13px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px 14px;margin:0}
+.kv div{min-width:0}
+.kv dt{font-size:11.5px;color:var(--ink-3)}
+.kv dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+.alert-list{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.alert-list li{border-left:3px solid var(--tone,var(--ink-3));padding:4px 10px;background:var(--surface-2);border-radius:0 6px 6px 0;font-size:13px}
+.alert-list li small{display:block;color:var(--ink-3)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line-2);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto}
+.timeline li{display:grid;grid-template-columns:118px 1fr;gap:10px;font-size:13px}
+.timeline time{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);padding-top:2px}
+.hist{display:flex;align-items:flex-end;gap:6px;height:90px;padding-top:6px;border-bottom:1px solid var(--line);position:relative}
+.hist .col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:3px}
+.hist .col i{display:block;width:100%;max-width:34px;border-radius:3px 3px 0 0;background:var(--warn)}
+.hist .col i.ok{background:var(--ok)} .hist .col i.none{background:var(--surface-2);height:3px}
+.hist .col span{font-family:var(--f-mono);font-size:10px;color:var(--ink-3)}
+.hist .th{position:absolute;left:0;right:0;border-top:1px dashed var(--ink-3)}
+.hist .th em{position:absolute;right:0;top:-15px;font-size:10px;color:var(--ink-3);font-style:normal;font-family:var(--f-mono)}
+.hist-labels{display:flex;gap:6px}
+.hist-labels span{flex:1;text-align:center;font-family:var(--f-mono);font-size:10.5px;color:var(--ink-3)}
+.row-actions{display:flex;flex-wrap:wrap;gap:8px}
+.inline-form{display:flex;flex-direction:column;gap:10px;border-top:1px dashed var(--line);padding-top:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13px;z-index:60;max-width:calc(100% - 32px);box-shadow:var(--shadow)}
+.lock{max-width:520px;margin:60px auto;text-align:center;display:flex;flex-direction:column;gap:10px;color:var(--ink-2)}
+.lock h2{color:var(--ink);font-size:18px}
+@media (max-width:640px){
+  .fresh{margin-left:0}
+  .kpi .k-n{font-size:22px}
+  .timeline li{grid-template-columns:1fr;gap:0}
+}
+@media (prefers-reduced-motion:no-preference){
+  .drawer{animation:slide .18s ease-out}
+  @keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}
+}
+
+html,body{margin:0}
+body{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+table{min-width:1160px}
+.mini table{min-width:0}
+.syncbar{display:inline-flex;align-items:center;gap:8px}
+.syncbar .bar{width:90px;height:5px}
+.syncbar .bar i{background:var(--accent)}
+.linkbtn{all:unset;cursor:pointer;color:var(--accent);font-weight:500}
+.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.login{max-width:380px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.login h2{font-size:18px}
+.login p{margin:0;color:var(--ink-2);font-size:13px}
+.err{color:var(--crit);font-size:13px;margin:0}
+.detail-table td,.detail-table th{white-space:nowrap}
+.detail-table tfoot td{font-weight:600;border-top:1px solid var(--line-2)}
+.muted{color:var(--ink-3)}
+.ago{display:block;font-size:11.5px;color:var(--ink-3)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="mark">VIP</span><h1>VIP 群管理台</h1></div>
+    <div class="fresh" id="fresh"></div>
+  </div>
+</header>
+<nav class="nav" aria-label="主要分頁" id="nav" hidden>
+  <div class="wrap">
+    <a href="#overview" data-view="overview">會員總覽</a>
+    <a href="#import" data-view="import">匯入與同步</a>
+    <a href="#rules" data-view="rules">規則與備份</a>
+    <a href="#log" data-view="log">更新紀錄</a>
+  </div>
+</nav>
+<main><div class="wrap" id="app"></div></main>
+<div id="drawerRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(() => {
+"use strict";
+/* ---------- time (all business logic in Taipei time) ---------- */
+const TZ="Asia/Taipei";
+const partsFmt=new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+function tp(d){const p={};partsFmt.formatToParts(new Date(d)).forEach(x=>p[x.type]=x.value);if(p.hour==="24")p.hour="00";return p;}
+function monthOf(d){const p=tp(d);return p.year+"-"+p.month;}
+function curMonth(){return monthOf(Date.now());}
+function mStart(m){return Date.parse(m+"-01T00:00:00+08:00");}
+function mEnd(m){let [y,mo]=m.split("-").map(Number);mo++;if(mo>12){mo=1;y++;}return Date.parse(`${y}-${String(mo).padStart(2,"0")}-01T00:00:00+08:00`);}
+const okT=iso=>iso&&!isNaN(Date.parse(iso));
+function dt(iso){if(!okT(iso))return "—";const p=tp(Date.parse(iso));return `${p.year}/${p.month}/${p.day} ${p.hour}:${p.minute}`;}
+function dshort(iso){if(!okT(iso))return "—";const p=tp(Date.parse(iso));return `${p.month}/${p.day} ${p.hour}:${p.minute}`;}
+function ddate(iso){if(!okT(iso))return "—";const p=tp(Date.parse(iso));return `${p.year}/${p.month}/${p.day}`;}
+function agoDays(iso){if(!okT(iso))return "";const d=Math.floor((Date.now()-Date.parse(iso))/864e5);return d<=0?"今天":d===1?"昨天":`${d} 天前`;}
+function agoMin(iso){if(!okT(iso))return "";const m=Math.floor((Date.now()-Date.parse(iso))/6e4);return m<1?"剛剛":m<60?`${m} 分鐘前`:m<1440?`${Math.floor(m/60)} 小時前`:`${Math.floor(m/1440)} 天前`;}
+function toInput(iso){if(!okT(iso))return "";const p=tp(Date.parse(iso));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;}
+function fromInput(v){if(!v)return null;const t=Date.parse(v+":00+08:00");return isNaN(t)?null:new Date(t).toISOString();}
+function parseWhen(s){
+  if(s==null||s==="")return null;
+  if(s instanceof Date)return isNaN(s)?null:s.toISOString();
+  s=String(s).trim();
+  if(/\dT\d/.test(s)&&!isNaN(Date.parse(s)))return new Date(Date.parse(s)).toISOString();
+  s=s.replace(/\//g,"-").replace(/\./g,"-");
+  if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(s))s+=" 00:00";
+  const m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if(m){const t=Date.parse(`${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}T${m[4].padStart(2,"0")}:${m[5]}:${m[6]||"00"}+08:00`);return isNaN(t)?null:new Date(t).toISOString();}
+  const t=Date.parse(s);return isNaN(t)?null:new Date(t).toISOString();
+}
+function parseMonth(v){if(!v)return null;const m=String(v).trim().replace(/\//g,"-").match(/^(\d{4})-(\d{1,2})/);return m?`${m[1]}-${m[2].padStart(2,"0")}`:null;}
+const days=(a,b)=>(b-a)/864e5;
+
+/* ---------- formatting ---------- */
+const nf=new Intl.NumberFormat("en-US",{maximumFractionDigits:2});
+const n0=new Intl.NumberFormat("en-US",{maximumFractionDigits:0});
+const money=v=>v==null||v===""||isNaN(v)?"—":nf.format(v);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function num(v){if(v==null||v==="")return null;if(typeof v==="number")return isFinite(v)?v:null;const n=parseFloat(String(v).replace(/,|\s|usdt|u$/gi,""));return isNaN(n)?null:n;}
+const truthy=v=>["是","y","yes","true","1","已完成","完成","通過","已通過","passed","verified","v","✓","已驗證","已確認"].includes(String(v??"").trim().toLowerCase());
+const validUid=u=>/^\d{4,20}$/.test(String(u||"").trim());
+
+/* ---------- state ---------- */
+const DEFAULTS={threshold:5000,graceDays:0,staleDays:3,noTradeAfterJoinDays:7,idleDays:14,outflowHours:48,outflowPct:80,assetDropPct:50};
+const HANDLING={none:"未處理",reminded:"已提醒",waiting:"等待回覆",confirmed:"已確認",exception:"例外保留"};
+const SYNC_EVERY=30*60e3;
+const S={token:null,ready:false,loadError:null,
+  members:new Map(),stats:new Map(),imports:[],settings:{...DEFAULTS},sync:{},
+  month:curMonth(),filter:"all",q:"",sort:"code",view:"overview",
+  openId:null,hist:[],dDirty:false,dForm:null,hDraft:null,pending:null,busy:false,confirmKey:null,
+  syncing:null,detail:new Map(),detailLoading:null,restore:null};
+
+/* ---------- storage helpers ---------- */
+const LS_TOKEN="vip-console:token";
+function lsGet(k){try{return localStorage.getItem(k);}catch{return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch{}}
+function lsDel(k){try{localStorage.removeItem(k);}catch{}}
+
+/* ---------- server API ---------- */
+async function req(url,opts={}){
+  let r,j=null;
+  try{r=await fetch(url,{...opts,headers:{"x-admin-token":S.token||"",...(opts.body?{"content-type":"application/json"}:{})}});}
+  catch{throw {code:"network",message:"連不到伺服器，請檢查網路"};}
+  try{j=await r.json();}catch{}
+  if(r.status===401){logout("管理密鑰不正確，請重新登入。");throw {code:"auth",message:"管理密鑰不正確"};}
+  if(!r.ok||!j||j.ok===false)throw {code:"server",message:j?.error||`伺服器錯誤（${r.status}）`};
+  return j;
+}
+const apiGet=(op,params={})=>req("/api/data?"+new URLSearchParams({op,...params}));
+const apiPost=(op,body)=>req("/api/data?op="+op,{method:"POST",body:JSON.stringify(body)});
+
+function applyLocal(writes){
+  for(const w of writes){
+    if(w.t==="member")S.members.set(w.id,{...w.data,id:w.id});
+    else if(w.t==="stat"){if(w.month===S.month)S.stats.set(w.id,w.data);}
+    else if(w.t==="config")S[w.key]=w.key==="settings"?{...DEFAULTS,...w.data}:w.data;
+    else if(w.t==="import")S.imports.unshift(w.data);
+    else if(w.t==="delMember"){S.members.delete(w.id);S.stats.delete(w.id);}
+  }
+}
+async function save(writes){
+  if(!writes.length)return;
+  applyLocal(writes);refresh();
+  try{
+    for(let i=0;i<writes.length;i+=1500)await apiPost("bulk",{writes:writes.slice(i,i+1500)});
+  }catch(e){toast("儲存失敗："+(e.message||"請稍後再試"));await reload().catch(()=>{});throw e;}
+}
+const memberW=m=>({t:"member",id:m.id,data:m});
+const updateMember=(id,patch)=>save([memberW({...S.members.get(id),...patch,id})]);
+const ev=(type,text,at)=>({at:at||new Date().toISOString(),type,text});
+function pushTL(mem,e){return [...(mem.timeline||[]),e].slice(-200);}
+const importW=o=>({t:"import",data:{...o,at:new Date().toISOString()}});
+const newId=()=>"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function nextCode(offset=0){let max=0;S.members.forEach(m=>{const k=parseInt(String(m.code||"").replace(/\D/g,""),10);if(k>max)max=k;});return "VIP-"+String(max+1+offset).padStart(4,"0");}
+async function pool(items,n,fn){let i=0;const run=async()=>{while(i<items.length){const k=i++;await fn(items[k],k);}};await Promise.all(Array.from({length:Math.min(n,items.length)},run));}
+
+async function reload(){
+  const j=await apiGet("load",{month:S.month});
+  S.members=new Map(Object.entries(j.members||{}).map(([id,d])=>[id,{...d,id}]));
+  S.stats=new Map(Object.entries(j.stats||{}));
+  S.settings={...DEFAULTS,...(j.settings||{})};S.sync=j.sync||{};S.imports=j.imports||[];
+  S.ready=true;S.loadError=null;refresh();
+}
+async function loadMonth(m){
+  S.month=m;S.stats=new Map();render();
+  try{const j=await apiGet("stats",{month:m});if(S.month===m){S.stats=new Map(Object.entries(j.stats||{}));refresh();}}
+  catch(e){toast(e.message||"讀取失敗");}
+}
+
+/* ---------- auto sync with BingX (server does the work, chunk by chunk) ---------- */
+function syncTargets(){
+  const ms=mStart(curMonth());
+  const cur=S.month===curMonth();
+  return [...S.members.values()]
+    .filter(m=>validUid(m.uid)&&(m.inGroup||(m.leftAt&&Date.parse(m.leftAt)>=ms)))
+    .sort((a,b)=>String((cur&&S.stats.get(a.id)?.updatedAt)||"").localeCompare(String((cur&&S.stats.get(b.id)?.updatedAt)||"")))
+    .map(m=>m.id);
+}
+async function runSync(force){
+  if(S.syncing||!S.ready)return;
+  const last=Date.parse(S.sync.bingxAsOf||0)||0;
+  if(!force&&Date.now()-last<SYNC_EVERY)return;
+  const ids=syncTargets();
+  if(!ids.length){if(force)toast("沒有可同步的會員（需要有數字 UID）");return;}
+  S.syncing={done:0,total:ids.length,fail:0};renderFresh();
+  const queue=[];for(let i=0;i<ids.length;i+=10)queue.push(ids.slice(i,i+10));
+  const retry=[];let authFail=false;
+  const handle=(r,count)=>{
+    for(const [id,m] of Object.entries(r.members||{}))S.members.set(id,{...m,id});
+    if(r.month===S.month)for(const [id,st] of Object.entries(r.stats||{}))S.stats.set(id,st);
+    for(const x of r.results||[]){
+      if(x.status==="timeout"&&count===0){retry.push(x.id);continue;}
+      S.syncing.done++;
+      if(["api_error","error","volume_unavailable","timeout"].includes(x.status))S.syncing.fail++;
+    }
+  };
+  const worker=async(q,count)=>{
+    while(q.length&&!authFail){
+      const ch=q.shift();
+      try{handle(await apiPost("sync",{ids:ch}),count);}
+      catch(e){if(e.code==="auth"){authFail=true;return;}S.syncing.done+=ch.length;S.syncing.fail+=ch.length;}
+      renderFresh();softRender();
+    }
+  };
+  await Promise.all([worker(queue,0),worker(queue,0)]);
+  if(retry.length&&!authFail){const q2=[];for(let i=0;i<retry.length;i+=5)q2.push(retry.slice(i,i+5));await worker(q2,1);}
+  if(authFail){S.syncing=null;return;}
+  const s=S.syncing;S.syncing=null;
+  try{await save([{t:"config",key:"sync",data:{...S.sync,bingxAsOf:new Date().toISOString(),lastRunTotal:s.total,lastRunFail:s.fail}}]);}catch{}
+  toast(s.fail?`同步完成，${s.fail} 位暫時查不到，下次會再試`:`已同步 ${s.total} 位會員的 BingX 數據`);
+  refresh();
+}
+let softT=null;
+function softRender(){if(softT)return;softT=setTimeout(()=>{softT=null;refresh();},700);}
+
+/* ---------- evaluation ---------- */
+function visibleIn(mem,m){
+  const j=Date.parse(mem.joinedAt||mem.createdAt||0);
+  if(!isNaN(j)&&j>=mEnd(m))return false;
+  if(!mem.inGroup&&mem.leftAt&&Date.parse(mem.leftAt)<mStart(m))return false;
+  return true;
+}
+function evaluate(mem,st,m){
+  const set=S.settings,now=Date.now(),cm=curMonth(),cur=m===cm,closed=m<cm,th=set.threshold;
+  const vol=st&&typeof st.volume==="number"?st.volume:null;
+  const stale=cur&&st&&st.updatedAt&&days(Date.parse(st.updatedAt),now)>set.staleDays;
+  const j=Date.parse(mem.joinedAt);
+  const inGrace=set.graceDays>0&&!isNaN(j)&&j>=mEnd(m)-set.graceDays*864e5;
+  let q;
+  if(!mem.uid)q={key:"pending",label:"待確認",tone:"pend",detail:"缺少 BingX UID"};
+  else if(mem.downline===false)q={key:"pending",label:"待確認",tone:"pend",detail:"不是你的邀請用戶"};
+  else if(!mem.uidVerified&&mem.downline!==true)q={key:"pending",label:"待確認",tone:"pend",detail:validUid(mem.uid)?"等待 BingX 同步確認":"UID 格式不正確"};
+  else if(vol===null)q={key:"pending",label:"待確認",tone:"pend",detail:"本月尚無交易數據"};
+  else if(vol>=th)q={key:"met",label:"已達標",tone:"ok",detail:closed?"月底結算達標":"本月已達標"};
+  else if(stale)q={key:"pending",label:"待確認",tone:"pend",detail:`數據超過 ${set.staleDays} 天未更新`};
+  else if(inGrace)q={key:"grace",label:"寬限期",tone:"mute",detail:`尚差 ${n0.format(th-vol)}`};
+  else if(closed)q={key:"failed",label:"結算未達標",tone:"crit",detail:`差 ${n0.format(th-vol)}`};
+  else q={key:"below",label:"尚未達標",tone:"warn",detail:`尚差 ${n0.format(th-vol)}`};
+
+  const alerts=[];
+  if(st&&vol===0)alerts.push({key:"zero",label:cur?"本月零交易":"當月零交易",tone:"crit",detail:"已有本月數據，交易額為 0"});
+  if(cur){
+    const last=st&&st.lastTradeAt?Date.parse(st.lastTradeAt):null;
+    const since=isNaN(j)?0:days(j,now);
+    const noTradeSinceJoin=last?last<j:(vol===0&&!isNaN(j)&&j>=mStart(m));
+    if(st&&mem.inGroup&&!isNaN(j)&&since>=set.noTradeAfterJoinDays&&noTradeSinceJoin)
+      alerts.push({key:"nojoin",label:`入群 ${Math.floor(since)} 天未交易`,tone:"crit",detail:`入群後超過 ${set.noTradeAfterJoinDays} 天仍無交易紀錄`});
+    else if(last&&days(last,now)>set.idleDays)
+      alerts.push({key:"idle",label:`${Math.floor(days(last,now))} 天未交易`,tone:"warn",detail:`距離最後交易超過 ${set.idleDays} 天`});
+    const out=quickOutflow(mem);
+    if(out)alerts.push({key:"outflow",label:"入群後快速轉出",tone:"crit",detail:`入群後 ${set.outflowHours} 小時內轉出 ${money(out.sum)} U（入群資產的 ${n0.format(out.pct)}%）`});
+    const asset=st&&typeof st.asset==="number"?st.asset:null;
+    if(!out&&asset!=null&&mem.joinAsset>0&&asset<=mem.joinAsset*(1-set.assetDropPct/100))
+      alerts.push({key:"drop",label:"資產明顯下降",tone:"warn",detail:`${money(mem.joinAsset)} → ${money(asset)} U，可能是轉出、虧損或價格變動，原因待確認`});
+  }
+  if(mem.downline===false)alerts.push({key:"notinvited",label:"不是邀請用戶",tone:"crit",detail:"BingX 查詢結果：此 UID 不在你的邀請名單"});
+  const lt=mem.leftAt?Date.parse(mem.leftAt):null;
+  const leftIn=lt&&lt>=mStart(m)&&lt<mEnd(m);
+  if(!mem.inGroup&&leftIn)alerts.push({key:"left",label:mem.leftPrecision==="discovered"?"發現不在群":"本月退群",tone:"mute",detail:(mem.leftPrecision==="discovered"?"名單比對發現不在群：":"退群時間：")+dt(mem.leftAt)});
+  const attention=alerts.some(a=>["zero","nojoin","idle","outflow","drop","notinvited"].includes(a.key));
+  return {q,alerts,vol,attention,leftIn:!!leftIn};
+}
+function quickOutflow(mem){
+  const set=S.settings,j=Date.parse(mem.joinedAt);
+  if(isNaN(j)||!(mem.joinAsset>0))return null;
+  const lim=j+set.outflowHours*36e5;
+  const sum=(mem.flows||[]).filter(f=>f.type!=="deposit"&&Date.parse(f.at)>=j&&Date.parse(f.at)<=lim).reduce((a,f)=>a+(+f.amount||0),0);
+  const pct=sum/mem.joinAsset*100;
+  return pct>=set.outflowPct?{sum,pct}:null;
+}
+function rows(){
+  const m=S.month;
+  return [...S.members.values()].filter(x=>visibleIn(x,m)).map(mem=>({mem,st:S.stats.get(mem.id),ev:evaluate(mem,S.stats.get(mem.id),m)}));
+}
+const FILTERS={
+  all:{l:"本月名單",s:"本月在群或曾在群",t:"t-acc",f:()=>true},
+  ingroup:{l:"在群會員",s:"目前仍在 VIP 群",t:"t-acc",f:r=>r.mem.inGroup},
+  met:{l:"已達標",s:"交易額達門檻",t:"t-ok",f:r=>r.ev.q.key==="met"},
+  below:{l:"尚未達標",s:"有數據但未達門檻",t:"t-warn",f:r=>["below","failed","grace"].includes(r.ev.q.key)},
+  pending:{l:"待確認",s:"缺 UID／非邀請／無數據",t:"t-pend",f:r=>r.ev.q.key==="pending"},
+  attention:{l:"需要關注",s:"未交易、轉出、非邀請",t:"t-crit",f:r=>r.ev.attention},
+  zero:{l:"零交易",s:"有數據且交易額為 0",t:"t-crit",f:r=>r.ev.alerts.some(a=>a.key==="zero")},
+  left:{l:"本月退群",s:"含名單比對發現",t:"t-mute",f:r=>r.ev.leftIn},
+};
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){const el=document.getElementById("toast");el.textContent=msg;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3600);}
+async function guard(fn){try{return await fn();}catch(e){console.warn(e);}}
+
+/* ---------- header ---------- */
+function renderFresh(){
+  const el=document.getElementById("fresh");
+  if(!S.token||!S.ready){el.innerHTML="";return;}
+  const s=S.sync,b=s.bingxAsOf;
+  const bt=b?(Date.now()-Date.parse(b)>SYNC_EVERY*4?"warn":"ok"):"";
+  const sy=S.syncing;
+  el.innerHTML=`${sy?`<span class="syncbar"><span class="spin" aria-hidden="true"></span>同步 BingX 中 <b class="num">${sy.done}/${sy.total}</b><span class="bar"><i style="width:${(sy.done/sy.total*100).toFixed(0)}%"></i></span></span>`
+      :`<span><i class="dot ${bt}"></i>BingX 數據 <b class="num">${b?dt(b):"尚未同步"}</b>${b?`<span class="muted">（${agoMin(b)}）</span>`:""} · <button class="linkbtn" data-act="sync-now">立即同步</button></span>`}
+    <span><i class="dot ${s.lineAsOf?"ok":""}"></i>LINE 名單比對 <b class="num">${s.lineAsOf?dt(s.lineAsOf):"尚未比對"}</b></span>
+    <span><button class="linkbtn" data-act="logout" style="color:var(--ink-3)">登出</button></span>`;
+}
+
+/* ---------- views ---------- */
+const app=document.getElementById("app");
+function render(){
+  document.getElementById("nav").hidden=!S.token||!S.ready;
+  document.querySelectorAll(".nav a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
+  renderFresh();
+  if(!S.token){viewLogin();return;}
+  if(S.loadError){app.innerHTML=`<div class="lock"><h2>無法讀取資料</h2><p>${esc(S.loadError)}</p><div class="row-actions" style="justify-content:center"><button class="btn primary" data-act="retry">重試</button><button class="btn" data-act="logout">重新登入</button></div></div>`;return;}
+  if(!S.ready){app.innerHTML=`<div class="empty"><h3><span class="spin"></span> 正在讀取會員資料…</h3></div>`;return;}
+  ({overview:viewOverview,import:viewImport,rules:viewRules,log:viewLog}[S.view]||viewOverview)();
+}
+function refresh(){
+  const a=document.activeElement;
+  const typing=a&&a.matches&&a.matches("input,textarea,select")&&!a.closest(".drawer")&&S.view!=="overview";
+  if(!typing)render();else renderFresh();
+  if(S.openId&&!S.dDirty&&!S.dForm)renderDrawer();
+}
+function viewLogin(msg){
+  app.innerHTML=`<form class="login" id="login-form">
+    <h2>管理員登入</h2>
+    <p>請輸入 Vercel 環境變數 <span class="mono">ADMIN_TOKEN</span> 的值。</p>
+    <label class="field"><span>管理密鑰</span><input type="password" id="login-token" autocomplete="current-password" required></label>
+    <label class="check"><input type="checkbox" id="login-remember" checked> 在這台裝置記住我</label>
+    ${S.loginMsg?`<p class="err">${esc(S.loginMsg)}</p>`:""}
+    <button class="btn primary" type="submit">登入</button>
+  </form>`;
+  setTimeout(()=>document.getElementById("login-token")?.focus(),30);
+}
+function logout(msg){S.token=null;S.ready=false;lsDel(LS_TOKEN);S.loginMsg=msg||"";closeDrawer();render();}
+
+function lastTradeCell(st){
+  if(!st||!st.lastTradeAt)return '<span class="muted">—</span>';
+  const d=Math.floor((Date.now()-Date.parse(st.lastTradeAt))/864e5);
+  const tone=d>S.settings.idleDays?"color:var(--warn)":"";
+  return `<span class="num" style="${tone}">${ddate(st.lastTradeAt).slice(5)}</span><span class="ago">${agoDays(st.lastTradeAt)}</span>`;
+}
+function viewOverview(){
+  const all=rows();
+  const cm=curMonth(),closed=S.month<cm;
+  const counts=Object.fromEntries(Object.entries(FILTERS).map(([k,f])=>[k,all.filter(f.f).length]));
+  const q=S.q.trim().toLowerCase();
+  let list=all.filter(FILTERS[S.filter].f).filter(r=>!q||[r.mem.code,r.mem.nickname,r.mem.uid,r.mem.note].some(v=>String(v||"").toLowerCase().includes(q)));
+  const rank={pending:0,failed:1,below:2,grace:3,met:4};
+  const lastMs=r=>r.st?.lastTradeAt?Date.parse(r.st.lastTradeAt):0;
+  const sorters={
+    code:(a,b)=>String(a.mem.code).localeCompare(String(b.mem.code)),
+    risk:(a,b)=>(b.ev.attention-a.ev.attention)||(rank[a.ev.q.key]-rank[b.ev.q.key]),
+    vol:(a,b)=>(b.ev.vol??-1)-(a.ev.vol??-1),
+    prog:(a,b)=>(a.ev.vol??-1)-(b.ev.vol??-1),
+    asset:(a,b)=>(b.st?.asset??-1)-(a.st?.asset??-1),
+    last:(a,b)=>lastMs(a)-lastMs(b),
+  };
+  list.sort(sorters[S.sort]||sorters.code);
+  const th=S.settings.threshold;
+  const empty=S.members.size===0;
+  const opt=(v,l)=>`<option value="${v}" ${S.sort===v?"selected":""}>${l}</option>`;
+  app.innerHTML=`
+  <div class="toolbar">
+    <label class="field"><span>統計月份（台灣時間）</span><input type="month" id="month" value="${S.month}" max="${cm}"></label>
+    <label class="field grow"><span>搜尋</span><input type="search" id="q" placeholder="暱稱、會員編號、UID、備註" value="${esc(S.q)}"></label>
+    <label class="field"><span>排序</span><select id="sort">${opt("code","會員編號")}${opt("risk","需處理優先")}${opt("vol","交易額 高→低")}${opt("prog","交易額 低→高")}${opt("asset","資產 高→低")}${opt("last","最久沒交易優先")}</select></label>
+    <div class="field"><span>&nbsp;</span><div class="row-actions">
+      <button class="btn primary" data-act="add">＋ 入群登記</button>
+      <button class="btn" data-act="export">匯出 CSV</button>
+    </div></div>
+  </div>
+  <div class="kpis" role="group" aria-label="依狀態篩選">
+    ${Object.entries(FILTERS).map(([k,f])=>`<button class="kpi ${f.t}" data-filter="${k}" aria-pressed="${S.filter===k}"><span class="k-n">${counts[k]}</span><span class="k-l">${f.l}</span><span class="k-s">${f.s}</span></button>`).join("")}
+  </div>
+  <section class="ledger">
+    <div class="ledger-head"><h2>${esc(FILTERS[S.filter].l)} · ${S.month}${closed?"（已結算）":"（月中，至今累計）"}</h2>
+      <span class="meta">達標門檻：每月交易額 ≥ <span class="num">${n0.format(th)}</span> USDT（含槓桿）· 點會員可查近 20 個交易日 · 顯示 ${list.length} 人</span></div>
+    ${empty?`<div class="empty"><h3>還沒有會員資料</h3><p>用「入群登記」新增會員，或到「規則與備份」還原舊管理台的備份檔。</p>
+        <div class="row-actions"><button class="btn primary" data-act="add">＋ 入群登記</button><a class="btn" href="#rules">還原備份</a></div></div>`
+    :list.length===0?`<div class="empty"><h3>這個篩選目前沒有會員</h3><p>換一個狀態卡片或清除搜尋條件。</p></div>`
+    :`<div class="scroll"><table><thead><tr>
+      <th>會員</th><th>BingX UID</th><th class="r">本月交易額</th><th>達標進度</th><th class="r">資產</th><th>最後交易</th><th>資格狀態</th><th>群內狀態</th><th>提醒</th><th>處理</th></tr></thead><tbody>
+      ${list.map(r=>rowHTML(r,th)).join("")}</tbody></table></div>`}
+  </section>`;
+}
+function uidChip(mem){
+  if(!mem.uid)return "";
+  if(mem.uidVerified)return '<span class="vchip y">已確認本人</span>';
+  if(mem.downline===true)return '<span class="vchip y">邀請用戶</span>';
+  if(mem.downline===false)return '<span class="vchip n" style="color:var(--crit);background:var(--crit-bg)">非邀請</span>';
+  return '<span class="vchip n">未確認</span>';
+}
+function rowHTML({mem,st,ev},th){
+  const worst=ev.alerts.find(a=>a.tone==="crit")?"var(--crit)":ev.q.key==="pending"?"var(--pend)":ev.alerts.find(a=>a.tone==="warn")?"var(--warn)":"transparent";
+  const pct=ev.vol==null?null:Math.min(ev.vol/th,1);
+  const grp=mem.inGroup?`<span class="pill ok">在群</span>`:`<span class="pill mute">${mem.leftPrecision==="discovered"?"不在群":"已退群"}</span><span class="sub">${dshort(mem.leftAt)}</span>`;
+  const rej=(mem.stints||[]).length;
+  return `<tr data-id="${esc(mem.id)}" tabindex="0">
+    <td class="sev who" style="--tone:${worst}"><b>${esc(mem.nickname||"（未填暱稱）")}</b><span class="mono">${esc(mem.code)}</span></td>
+    <td><span class="uid mono">${esc(mem.uid||"—")}${uidChip(mem)}</span></td>
+    <td class="r num">${ev.vol==null?'<span class="muted">—</span>':money(ev.vol)}</td>
+    <td>${pct==null?'<span class="sub">無數據</span>':`<div class="prog"><div class="bar"><i class="${pct>=1?"full":""}" style="width:${(pct*100).toFixed(1)}%"></i></div><span class="pct">${pct>=1?"達標":Math.floor(pct*100)+"%"}</span></div>`}</td>
+    <td class="r num">${st&&st.asset!=null?money(st.asset):'<span class="muted">—</span>'}</td>
+    <td>${lastTradeCell(st)}</td>
+    <td><span class="pill ${ev.q.tone}">${ev.q.label}</span><span class="sub">${esc(ev.q.key==="met"?"":ev.q.detail)}</span></td>
+    <td>${grp}${rej?`<span class="sub">重新入群 ${rej} 次</span>`:""}</td>
+    <td><div class="chips">${ev.alerts.length?ev.alerts.map(a=>`<span class="chip ${a.tone}">${esc(a.label)}</span>`).join(""):'<span class="chip mute">—</span>'}</div></td>
+    <td><span class="sub" style="margin:0">${esc(HANDLING[mem.handling?.state||"none"])}</span></td></tr>`;
+}
+
+/* ---------- import & sync view ---------- */
+function viewImport(){
+  const cm=curMonth(),p=S.pending,s=S.sync;
+  const targets=syncTargets().length;
+  app.innerHTML=`
+  ${p?previewHTML(p):""}
+  <section class="panel">
+    <h2>BingX 自動同步</h2>
+    <p class="desc">打開網頁時，如果距離上次同步超過 30 分鐘，會自動向 BingX 更新所有會員的本月交易額、資產、最後交易日與 KYC；另外每天凌晨 2 點會在背景自動同步一次。</p>
+    <div class="stat-row">
+      <span>上次同步：<span class="mono">${s.bingxAsOf?dt(s.bingxAsOf):"尚未同步"}</span></span>
+      <span>同步對象：<b>${targets}</b>位（有數字 UID 的在群會員）</span>
+      ${s.lastRunTotal?`<span>上次結果：${s.lastRunTotal-(s.lastRunFail||0)} 位成功${s.lastRunFail?`，${s.lastRunFail} 位暫時查不到`:""}</span>`:""}
+      ${s.cronAt?`<span>背景同步：<span class="mono">${dt(s.cronAt)}</span>（${s.cronDone||0}/${s.cronTotal||0}）</span>`:""}
+    </div>
+    <div class="row-actions">${S.syncing?`<button class="btn" disabled><span class="spin"></span> 同步中 ${S.syncing.done}/${S.syncing.total}</button>`:`<button class="btn primary" data-act="sync-now">立即同步</button>`}</div>
+  </section>
+  <div class="grid2">
+    <section class="panel">
+      <h2>會員名單</h2>
+      <p class="desc">批次建立會員或更新基本資料。已存在的 UID 會更新資料，不會重複建立。</p>
+      <label class="check"><input type="checkbox" id="imp-verified"> 這批 UID 已核對，直接標記為「已確認本人」</label>
+      <label class="field"><span>選擇 CSV 或 Excel</span><input type="file" id="f-members" accept=".csv,.xlsx,.xls"></label>
+      <p class="note">可辨識欄位：<code>暱稱</code>（必填）、<code>UID</code>、<code>入群時間</code>、<code>入群資產</code>、<code>KYC</code>、<code>是否旗下</code>、<code>備註</code>。</p>
+    </section>
+    <section class="panel">
+      <h2>LINE 社群名單比對</h2>
+      <p class="desc">貼上目前社群內的完整名單（每行一位，用 LINE 暱稱或會員編號）。名單中沒有的在群會員會標記為「發現不在群」。</p>
+      <label class="field"><span>目前社群名單</span><textarea id="roster" placeholder="小明&#10;阿傑&#10;VIP-0007"></textarea></label>
+      <div class="row-actions"><button class="btn" data-act="roster">比對名單</button></div>
+      <p class="note">暱稱可能重複或被更改，比對結果請先確認再套用。</p>
+    </section>
+    <section class="panel">
+      <h2>資金紀錄（出金／劃轉）</h2>
+      <p class="desc">BingX API 不提供邀請用戶的出金紀錄。如果你另外拿得到，可以匯入來判斷「入群後快速轉出」。</p>
+      <label class="field"><span>選擇 CSV 或 Excel</span><input type="file" id="f-flows" accept=".csv,.xlsx,.xls"></label>
+      <p class="note">可辨識欄位：<code>UID</code>、<code>時間</code>、<code>類型</code>（出金／劃轉／入金）、<code>金額</code>。</p>
+    </section>
+    <section class="panel">
+      <h2>手動匯入交易數據</h2>
+      <p class="desc">自動同步之外的備用方式，例如補匯過去月份。</p>
+      <div class="form-row">
+        <label class="field"><span>套用月份（檔案無月份欄時）</span><input type="month" id="imp-month" value="${cm}" max="${cm}"></label>
+        <label class="field"><span>資料截至</span><input type="datetime-local" id="imp-asof" value="${toInput(new Date().toISOString())}"></label>
+      </div>
+      <label class="field"><span>選擇 CSV 或 Excel（可多選）</span><input type="file" id="f-stats" accept=".csv,.xlsx,.xls" multiple></label>
+      <p class="note">可辨識欄位：<code>UID</code>、<code>交易額</code>、<code>月份</code>、<code>交易天數</code>、<code>最後交易時間</code>、<code>資產</code>。</p>
+    </section>
+  </div>`;
+}
+function previewHTML(p){
+  const head=`<section class="panel preview"><h2>${esc(p.title)}</h2><p class="desc">檔案：${esc(p.filename||"貼上的名單")} · 確認後才會寫入</p>`;
+  let body="";
+  if(p.kind==="stats"){
+    body=`<div class="stat-row"><span><b>${p.matched.length}</b>筆配對成功</span><span><b>${p.unmatched.length}</b>個 UID 找不到會員</span><span><b>${p.invalid}</b>列缺少 UID 或交易額</span><span>月份：<span class="mono">${[...new Set(p.matched.map(r=>r.month))].join("、")||"—"}</span></span></div>
+    ${p.unmatched.length?`<ul class="list-plain mono">${p.unmatched.slice(0,30).map(u=>`<li>${esc(u.uid)}</li>`).join("")}</ul>`:""}`;
+  }else if(p.kind==="members"){
+    body=`<div class="stat-row"><span><b>${p.create.length}</b>位新會員</span><span><b>${p.update.length}</b>位依 UID 更新</span><span><b>${p.invalid}</b>列缺少暱稱</span></div>
+    <ul class="list-plain">${[...p.create.map(r=>`新增：${esc(r.nickname)} ${esc(r.uid||"")}`),...p.update.map(r=>`更新：${esc(r.mem.code)} ${esc(r.nickname)}`)].slice(0,40).map(s=>`<li>${s}</li>`).join("")}</ul>`;
+  }else if(p.kind==="flows"){
+    body=`<div class="stat-row"><span><b>${p.add}</b>筆新紀錄</span><span><b>${p.dup}</b>筆重複略過</span><span><b>${p.unmatched.length}</b>個 UID 找不到會員</span><span><b>${p.invalid}</b>列格式不完整</span></div>`;
+  }else if(p.kind==="roster"){
+    body=`<div class="stat-row"><span><b>${p.stay.length}</b>位仍在群</span><span><b>${p.out.length}</b>位將標記「發現不在群」</span><span><b>${p.back.length}</b>位將標記「重新入群」</span><span><b>${p.unknown.length}</b>個名稱系統內沒有</span></div>
+    ${p.out.length?`<p class="desc">將標記發現不在群：</p><ul class="list-plain">${p.out.map(m=>`<li>${esc(m.code)} ${esc(m.nickname)}</li>`).join("")}</ul>`:""}
+    ${p.back.length?`<p class="desc">將標記重新入群：</p><ul class="list-plain">${p.back.map(m=>`<li>${esc(m.code)} ${esc(m.nickname)}</li>`).join("")}</ul>`:""}
+    ${p.unknown.length?`<p class="desc">系統內找不到：</p><ul class="list-plain">${p.unknown.slice(0,40).map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:""}`;
+  }
+  return head+body+`<div class="row-actions"><button class="btn primary" data-act="apply" ${S.busy?"disabled":""}>${S.busy?"寫入中…":"確認套用"}</button><button class="btn" data-act="cancel-pv">取消</button></div></section>`;
+}
+
+/* ---------- parsing ---------- */
+const norm=k=>String(k).toLowerCase().replace(/[\s_\-()（）:：.]/g,"");
+const AL={
+  uid:["uid","bingxuid","用戶id","用户id","用戶uid","交易所uid","userid","會員uid","帳號id"],
+  volume:["volume","交易額","交易量","成交額","成交金額","合約交易額","tradingvolume","vol","交易額usdt","月交易額"],
+  month:["month","月份","統計月份"],
+  tradeDays:["tradedays","交易天數","交易日數","days"],
+  fees:["fees","fee","手續費","手续费"],
+  lastTradeAt:["lasttradeat","最後交易時間","最后交易时间","lasttrade","最近交易時間","最近交易"],
+  asset:["asset","資產","總資產","总资产","餘額","balance","equity","當前資產"],
+  nickname:["nickname","暱稱","群內暱稱","line暱稱","社群暱稱","名稱","name"],
+  joinedAt:["joinedat","入群時間","入群日期","join","joindate"],
+  joinAsset:["joinasset","入群資產","入群時資產"],
+  kyc:["kyc","kyc狀態"],
+  downline:["downline","旗下","是否旗下","是否為旗下用戶","邀請關係"],
+  note:["note","備註","备注"],
+  time:["time","時間","日期","date","at","datetime"],
+  type:["type","類型","类型"],
+  amount:["amount","金額","數量","数量"],
+};
+Object.keys(AL).forEach(k=>AL[k]=AL[k].map(norm));
+function pick(row,key){for(const k of Object.keys(row))if(AL[key].includes(norm(k)))return row[k];return undefined;}
+function parseCSV(text){
+  const out=[];let row=[],f="",q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++;}else q=false;}else f+=c;}
+    else if(c==='"')q=true;else if(c===","){row.push(f);f="";}
+    else if(c==="\n"||c==="\r"){if(c==="\r"&&text[i+1]==="\n")i++;row.push(f);out.push(row);row=[];f="";}
+    else f+=c;}
+  if(f!==""||row.length){row.push(f);out.push(row);}
+  const [h,...rest]=out.filter(r=>r.some(c=>c.trim()!==""));
+  if(!h)return [];
+  const hdr=h.map(x=>x.replace(/^﻿/,"").trim());
+  return rest.map(r=>Object.fromEntries(hdr.map((k,i)=>[k,(r[i]??"").trim()])));
+}
+async function readSheet(file){
+  if(window.XLSX){
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array",cellDates:true});
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:"",raw:false,dateNF:"yyyy-mm-dd hh:mm"});
+  }
+  if(/\.csv$/i.test(file.name))return parseCSV(await file.text());
+  throw new Error("Excel 讀取元件沒有載入，請改用 CSV 檔。");
+}
+const byUid=()=>{const m=new Map();S.members.forEach(x=>{if(x.uid)m.set(String(x.uid).trim(),x);});return m;};
+
+function planStats(data,filename){
+  const month=document.getElementById("imp-month").value||curMonth();
+  const asOf=fromInput(document.getElementById("imp-asof").value)||new Date().toISOString();
+  const idx=byUid();const matched=[],un=new Map();let invalid=0;
+  data.forEach(r=>{
+    const uid=String(pick(r,"uid")??"").trim(),volume=num(pick(r,"volume"));
+    if(!uid||volume==null){invalid++;return;}
+    const rec={uid,volume,month:parseMonth(pick(r,"month"))||month,tradeDays:num(pick(r,"tradeDays")),lastTradeAt:parseWhen(pick(r,"lastTradeAt")),asset:num(pick(r,"asset"))};
+    const mem=idx.get(uid);if(mem)matched.push({...rec,mem});else un.set(uid,rec);
+  });
+  return {kind:"stats",title:"預覽：交易數據",filename,asOf,matched,unmatched:[...un.values()],invalid};
+}
+function planMembers(data,filename){
+  const idx=byUid();const create=[],update=[];let invalid=0;
+  data.forEach(r=>{
+    const nickname=String(pick(r,"nickname")??"").trim();if(!nickname){invalid++;return;}
+    const uid=String(pick(r,"uid")??"").trim();
+    const rec={nickname,uid,joinedAt:parseWhen(pick(r,"joinedAt")),joinAsset:num(pick(r,"joinAsset")),kyc:String(pick(r,"kyc")??"").trim(),downline:pick(r,"downline")===undefined||pick(r,"downline")===""?null:truthy(pick(r,"downline")),note:String(pick(r,"note")??"").trim()};
+    const mem=uid&&idx.get(uid);if(mem)update.push({...rec,mem});else create.push(rec);
+  });
+  return {kind:"members",title:"預覽：會員名單",filename,create,update,invalid,verified:document.getElementById("imp-verified").checked};
+}
+function planFlows(data,filename){
+  const idx=byUid();const per=new Map();const un=new Set();let invalid=0,add=0,dup=0;
+  data.forEach(r=>{
+    const uid=String(pick(r,"uid")??"").trim(),at=parseWhen(pick(r,"time")),amount=num(pick(r,"amount"));
+    const t=String(pick(r,"type")??"").toLowerCase();
+    if(!uid||!at||amount==null){invalid++;return;}
+    const type=/劃轉|划转|transfer/.test(t)?"transfer":/入金|充值|deposit/.test(t)?"deposit":"withdraw";
+    const mem=idx.get(uid);if(!mem){un.add(uid);return;}
+    if(!per.has(mem.id))per.set(mem.id,{mem,keys:new Set((mem.flows||[]).map(f=>`${f.at}|${f.type}|${f.amount}`)),items:[]});
+    const g=per.get(mem.id),key=`${at}|${type}|${Math.abs(amount)}`;
+    if(g.keys.has(key)){dup++;return;}g.keys.add(key);g.items.push({at,type,amount:Math.abs(amount)});add++;
+  });
+  return {kind:"flows",title:"預覽：資金紀錄",filename,per:[...per.values()],unmatched:[...un],invalid,add,dup};
+}
+function planRoster(text){
+  const names=text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const set=new Set(names);const used=new Set();
+  const hit=m=>{if(set.has(m.code)){used.add(m.code);return true;}if(m.nickname&&set.has(m.nickname)){used.add(m.nickname);return true;}return false;};
+  const stay=[],out=[],back=[];
+  [...S.members.values()].forEach(m=>{const h=hit(m);if(m.inGroup){h?stay.push(m):out.push(m);}else if(h)back.push(m);});
+  return {kind:"roster",title:"預覽：LINE 社群名單比對",filename:null,stay,out,back,unknown:names.filter(n=>!used.has(n))};
+}
+
+async function applyPending(){
+  const p=S.pending;if(!p||S.busy)return;
+  S.busy=true;render();
+  const now=new Date().toISOString();const W=[];
+  try{
+    if(p.kind==="stats"){
+      const byMonth=new Map();p.matched.forEach(r=>{if(!byMonth.has(r.month))byMonth.set(r.month,[]);byMonth.get(r.month).push(r);});
+      for(const [m,list] of byMonth){
+        const prev=m===S.month?S.stats:new Map(Object.entries((await apiGet("stats",{month:m})).stats||{}));
+        for(const r of list){
+          const old=prev.get(r.mem.id)||{};
+          W.push({t:"stat",month:m,id:r.mem.id,data:{memberId:r.mem.id,month:m,volume:r.volume,tradeDays:r.tradeDays??old.tradeDays??null,lastTradeAt:r.lastTradeAt??old.lastTradeAt??null,asset:r.asset??old.asset??null,updatedAt:p.asOf,source:"import:"+(p.filename||""),history:[...(old.history||[]),{at:p.asOf,volume:r.volume,source:"import"}].slice(-60)}});
+        }
+      }
+      W.push(importW({kind:"stats",label:"交易數據",filename:p.filename,total:p.matched.length,unmatched:p.unmatched.length,months:[...byMonth.keys()],asOf:p.asOf}));
+    }else if(p.kind==="members"){
+      p.create.forEach((r,i)=>{const id=newId()+i;W.push(memberW({id,code:nextCode(i),nickname:r.nickname,uid:r.uid,uidVerified:!!(r.uid&&p.verified),joinedAt:r.joinedAt,inGroup:true,joinAsset:r.joinAsset,kyc:r.kyc,downline:r.downline,note:r.note,handling:{state:"none"},flows:[],stints:[],timeline:[ev("join","入群（名單匯入）",r.joinedAt||now)],createdAt:now}));});
+      p.update.forEach(r=>{const patch={nickname:r.nickname};["joinedAt","joinAsset","kyc","note"].forEach(k=>{if(r[k]!=null&&r[k]!=="")patch[k]=r[k];});if(r.downline!=null)patch.downline=r.downline;if(p.verified)patch.uidVerified=true;patch.timeline=pushTL(r.mem,ev("edit","基本資料由名單匯入更新"));W.push(memberW({...r.mem,...patch}));});
+      W.push(importW({kind:"members",label:"會員名單",filename:p.filename,total:p.create.length+p.update.length,created:p.create.length}));
+    }else if(p.kind==="flows"){
+      p.per.forEach(g=>{const flows=[...(g.mem.flows||[]),...g.items].sort((a,b)=>a.at<b.at?-1:1).slice(-500);W.push(memberW({...S.members.get(g.mem.id),flows}));});
+      W.push(importW({kind:"flows",label:"資金紀錄",filename:p.filename,total:p.add,unmatched:p.unmatched.length}));
+    }else if(p.kind==="roster"){
+      p.out.forEach(m=>W.push(memberW({...m,inGroup:false,leftAt:now,leftPrecision:"discovered",timeline:pushTL(m,ev("leave","名單比對發現不在群（非精確退群時間）"))})));
+      p.back.forEach(m=>W.push(memberW({...m,inGroup:true,stints:[...(m.stints||[]),{joinedAt:m.joinedAt,leftAt:m.leftAt}],joinedAt:now,leftAt:null,leftPrecision:null,timeline:pushTL(m,ev("rejoin","名單比對發現重新入群"))})));
+      W.push({t:"config",key:"sync",data:{...S.sync,lineAsOf:now}});
+      W.push(importW({kind:"roster",label:"LINE 名單比對",total:p.stay.length+p.back.length,out:p.out.length,back:p.back.length,unknown:p.unknown.length}));
+    }
+    await save(W);
+    toast("已套用");S.pending=null;
+  }catch(e){console.warn(e);}
+  S.busy=false;render();
+}
+
+/* ---------- rules & backup view ---------- */
+function viewRules(){
+  const s=S.settings;
+  const nf2=(id,label,val,hint,step="1")=>`<label class="field"><span>${label}</span><input type="number" id="${id}" value="${val}" min="0" step="${step}">${hint?`<small>${hint}</small>`:""}</label>`;
+  const rs=S.restore;
+  app.innerHTML=`
+  <div class="grid2">
+    <section class="panel">
+      <h2>每月續留資格</h2>
+      <p class="rule-sentence">每位會員，每月（台灣時間 1 日 00:00 起）累計交易額達 <b>${n0.format(s.threshold)}</b> USDT 即為「已達標」。交易額已含槓桿，系統直接加總。</p>
+      <div class="form-row">
+        ${nf2("s-threshold","每月交易額門檻（USDT）",s.threshold,"含槓桿後的成交額","100")}
+        ${nf2("s-grace","新會員寬限天數",s.graceDays,"月底前 N 天內入群者列為寬限期；0 為不啟用")}
+        ${nf2("s-stale","數據過期天數",s.staleDays,"本月數據超過 N 天未更新，未達標者改列待確認")}
+      </div>
+    </section>
+    <section class="panel">
+      <h2>異常提醒</h2>
+      <p class="desc">提醒只用來提示你去確認，不會改變會員的達標結果。</p>
+      <div class="form-row">
+        ${nf2("s-nojoin","入群後未交易（天）",s.noTradeAfterJoinDays,"入群滿 N 天仍無交易")}
+        ${nf2("s-idle","長時間未交易（天）",s.idleDays,"距離最後交易超過 N 天")}
+        ${nf2("s-oh","快速轉出時限（小時）",s.outflowHours,"入群後 N 小時內")}
+        ${nf2("s-op","快速轉出比例（%）",s.outflowPct,"出金＋劃轉達入群資產的 N%")}
+        ${nf2("s-drop","資產下降門檻（%）",s.assetDropPct,"相對入群時資產")}
+      </div>
+    </section>
+  </div>
+  <div class="row-actions"><button class="btn primary" data-act="save-rules">儲存規則</button></div>
+  <div class="grid2">
+    <section class="panel">
+      <h2>下載備份</h2>
+      <p class="desc">下載全部會員、每月數據、規則與匯入紀錄為 JSON 檔。建議每月結算後備份一次。</p>
+      <div class="row-actions"><button class="btn" data-act="backup">下載完整備份</button></div>
+    </section>
+    <section class="panel">
+      <h2>從備份還原</h2>
+      <p class="desc">可以匯入這個網站或舊版管理台的備份檔。相同會員 ID 會被備份內容覆蓋，其他會員不受影響。</p>
+      <label class="field"><span>選擇備份 JSON</span><input type="file" id="f-restore" accept=".json,application/json"></label>
+      ${rs?`<p class="note">備份內容：<b>${rs.members.length}</b> 位會員、<b>${rs.stats.length}</b> 筆月數據${rs.settings?"、規則設定":""}。</p>
+        <div class="row-actions"><button class="btn primary" data-act="restore-yes" ${S.busy?"disabled":""}>${S.busy?"還原中…":`確認還原 ${rs.members.length} 位會員`}</button><button class="btn" data-act="restore-cancel">取消</button></div>`:""}
+    </section>
+  </div>`;
+}
+
+/* ---------- log view ---------- */
+function viewLog(){
+  const tl=[];S.members.forEach(m=>(m.timeline||[]).forEach(e=>tl.push({...e,mem:m})));
+  tl.sort((a,b)=>a.at<b.at?1:-1);
+  const kindTxt=i=>i.kind==="stats"?`${i.total} 筆，月份 ${(i.months||[]).join("、")}${i.unmatched?`，${i.unmatched} 個 UID 未配對`:""}`
+    :i.kind==="members"?`${i.total} 位（新增 ${i.created||0}）`:i.kind==="flows"?`${i.total} 筆新紀錄`:i.kind==="restore"?`還原 ${i.total} 位會員`:`不在群 ${i.out||0}、重新入群 ${i.back||0}、未知名稱 ${i.unknown||0}`;
+  app.innerHTML=`
+  <div class="grid2">
+    <section class="panel">
+      <h2>匯入紀錄</h2>
+      ${S.imports.length?`<div class="scroll mini"><table><thead><tr><th>時間</th><th>類型</th><th>內容</th></tr></thead><tbody>
+      ${S.imports.map(i=>`<tr><td class="mono">${dt(i.at)}</td><td>${esc(i.label||i.kind)}${i.filename?`<span class="sub">${esc(i.filename)}</span>`:""}</td><td>${esc(kindTxt(i))}</td></tr>`).join("")}</tbody></table></div>`
+      :`<p class="desc">還沒有匯入紀錄。</p>`}
+    </section>
+    <section class="panel">
+      <h2>會員異動</h2>
+      ${tl.length?`<ul class="timeline">${tl.slice(0,150).map(e=>`<li><time>${dt(e.at)}</time><span><button class="linkbtn" data-open="${esc(e.mem.id)}">${esc(e.mem.nickname)}</button> · ${esc(e.text)}</span></li>`).join("")}</ul>`:`<p class="desc">尚無異動。</p>`}
+    </section>
+  </div>`;
+}
+
+/* ---------- member detail from BingX ---------- */
+async function loadDetail(mem,force){
+  const uid=String(mem.uid||"").trim();
+  if(!validUid(uid))return;
+  const c=S.detail.get(uid);
+  if(c&&!force&&Date.now()-c.t<10*60e3)return;
+  S.detailLoading=uid;renderDetail();
+  try{
+    const r=await fetch("/api/broker?action=detail&uid="+encodeURIComponent(uid),{headers:{"x-admin-token":S.token}});
+    const j=await r.json().catch(()=>null);
+    if(r.status===401){logout("管理密鑰不正確，請重新登入。");return;}
+    if(!r.ok||!j||!j.ok)throw new Error(j?.error||`查詢失敗（${r.status}）`);
+    S.detail.set(uid,{t:Date.now(),data:j});
+  }catch(e){S.detail.set(uid,{t:Date.now(),error:e.message||"查詢失敗"});}
+  if(S.detailLoading===uid)S.detailLoading=null;
+  renderDetail();
+}
+function renderDetail(){const box=document.getElementById("detail-box");const mem=S.members.get(S.openId);if(box&&mem)box.innerHTML=detailHTML(mem);}
+function detailHTML(mem){
+  const uid=String(mem.uid||"").trim();
+  if(!validUid(uid))return `<p class="desc muted" style="margin:0">需要數字 UID 才能向 BingX 查詢。</p>`;
+  const c=S.detail.get(uid);
+  if(S.detailLoading===uid&&!c)return `<p class="desc" style="margin:0"><span class="spin"></span> 正在向 BingX 查詢…</p>`;
+  if(!c)return `<div class="row-actions"><button class="btn small" data-act="detail-reload">查詢</button></div>`;
+  if(c.error)return `<p class="err">${esc(c.error)}</p><div class="row-actions"><button class="btn small" data-act="detail-reload">重新查詢</button></div>`;
+  const d=c.data,a=d.account;
+  const has=k=>d.days.some(x=>x[k]!=null&&x[k]>0);
+  const cols=[["swap","永續"],["spot","現貨"],["std","標準合約"],["copy","跟單"],["mt5","MT5"]].filter(([k])=>has(k));
+  const sum=k=>d.days.reduce((s,x)=>s+(x[k]||0),0);
+  return `
+    ${a?`<dl class="kv">
+      <div><dt>淨資產</dt><dd class="num">${money(num(a.balance))} U</dd></div>
+      <div><dt>邀請關係</dt><dd>${a.invited?(a.directInvitation===false?"間接邀請":"直接邀請"):'<span style="color:var(--crit)">非邀請用戶</span>'}</dd></div>
+      <div><dt>KYC</dt><dd>${a.kyc?"已完成":"未完成"}</dd></div>
+      <div><dt>註冊時間</dt><dd class="num">${ddate(a.registerAt)}</dd></div>
+      <div><dt>是否入金過</dt><dd>${a.deposit==null?"—":a.deposit?"是":"否"}</dd></div>
+      <div><dt>是否交易過</dt><dd>${a.trade==null?"—":a.trade?"是":"否"}</dd></div>
+    </dl>`:`<p class="err">帳戶狀態查詢失敗：${esc(d.accountError||"")}</p>`}
+    <h3 style="margin-top:6px">近 ${d.days.length} 個交易日</h3>
+    ${d.days.length?`<div class="scroll mini"><table class="detail-table"><thead><tr><th>日期</th><th class="r">交易額</th>${cols.map(([,l])=>`<th class="r">${l}</th>`).join("")}<th class="r">你的佣金</th></tr></thead><tbody>
+      ${d.days.map(x=>`<tr><td class="mono">${esc(x.date)}</td><td class="r num">${money(x.volume)}</td>${cols.map(([k])=>`<td class="r num">${x[k]?money(x[k]):'<span class="muted">—</span>'}</td>`).join("")}<td class="r num">${money(x.commission)}</td></tr>`).join("")}
+      </tbody><tfoot><tr><td>合計</td><td class="r num">${money(sum("volume"))}</td>${cols.map(([k])=>`<td class="r num">${money(sum(k))}</td>`).join("")}<td class="r num">${money(sum("commission"))}</td></tr></tfoot></table></div>`
+      :`<p class="desc muted" style="margin:0">${d.dailyOk?"近 180 天沒有交易紀錄。":"每日交易紀錄查詢失敗："+esc(d.dailyError||"")}</p>`}
+    <h3 style="margin-top:6px">近 90 天入金</h3>
+    ${d.deposits?.ok?(d.deposits.list.length?`<div class="scroll mini"><table class="detail-table"><thead><tr><th>時間</th><th>類型</th><th>幣種</th><th class="r">金額</th></tr></thead><tbody>
+      ${d.deposits.list.map(x=>`<tr><td class="mono">${dt(x.at)}</td><td>${esc(x.type)}</td><td>${esc(x.currency)}</td><td class="r num">${esc(x.amount)}</td></tr>`).join("")}</tbody></table></div>`
+      :`<p class="desc muted" style="margin:0">近 90 天沒有入金紀錄。</p>`):`<p class="desc muted" style="margin:0">入金紀錄無法查詢：${esc(d.deposits?.note||"")}</p>`}
+    <p class="desc muted" style="margin:0;font-size:12px">BingX 只提供每日彙總，不提供逐筆成交與出金紀錄。查詢於 ${dt(d.checkedAt)}。</p>
+    <div class="row-actions"><button class="btn small" data-act="detail-reload" ${S.detailLoading===uid?"disabled":""}>${S.detailLoading===uid?'<span class="spin"></span> 查詢中':"重新查詢"}</button></div>`;
+}
+
+/* ---------- drawer ---------- */
+const dRoot=document.getElementById("drawerRoot");
+async function openDrawer(id){
+  S.openId=id;S.dDirty=false;S.hist=[];S.dForm=null;S.hDraft=null;S.confirmKey=null;renderDrawer();
+  const mem=S.members.get(id);
+  if(mem)loadDetail(mem);
+  try{
+    const months=[];{let [y,mo]=S.month.split("-").map(Number);for(let i=0;i<6;i++){months.push(`${y}-${String(mo).padStart(2,"0")}`);mo--;if(mo<1){mo=12;y--;}}}
+    const j=await apiPost("hist",{memberId:id,months});
+    if(S.openId===id){S.hist=j.list||[];if(!S.dDirty&&!S.dForm)renderDrawer();}
+  }catch(e){console.warn(e);}
+}
+function closeDrawer(){S.openId=null;S.dForm=null;dRoot.innerHTML="";}
+function renderDrawer(){
+  const mem=S.members.get(S.openId);
+  if(!mem){closeDrawer();return;}
+  const st=S.stats.get(mem.id),e=evaluate(mem,st,S.month),th=S.settings.threshold;
+  const h=mem.handling||{state:"none"};
+  const pct=e.vol==null?0:Math.min(e.vol/th,1);
+  const hm=new Map(S.hist.map(x=>[x.month,x]));if(st)hm.set(st.month,st);
+  const months=[];{let [y,mo]=S.month.split("-").map(Number);for(let i=0;i<6;i++){months.unshift(`${y}-${String(mo).padStart(2,"0")}`);mo--;if(mo<1){mo=12;y--;}}}
+  const maxV=Math.max(th*1.25,...months.map(m=>hm.get(m)?.volume||0));
+  const f=S.dForm;
+  const scrollTop=dRoot.querySelector(".d-body")?.scrollTop||0;
+  dRoot.innerHTML=`<div class="scrim" data-act="close"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title">
+    <div class="d-head"><div class="t">
+      <span class="code">${esc(mem.code)}</span>
+      <h2 id="d-title">${esc(mem.nickname||"（未填暱稱）")}</h2>
+      <div class="chips"><span class="pill ${e.q.tone}">${e.q.label}</span>${mem.inGroup?'<span class="pill ok">在群</span>':`<span class="pill mute">${mem.leftPrecision==="discovered"?"發現不在群":"已退群"}</span>`}<span class="pill mute">${esc(HANDLING[h.state||"none"])}</span></div>
+    </div><button class="btn small" data-act="close" aria-label="關閉">關閉</button></div>
+    <div class="d-body">
+      <section class="d-sec"><h3>${S.month} 交易額</h3>
+        <div class="big"><span class="num">${e.vol==null?"—":money(e.vol)}</span><span class="of">／ ${n0.format(th)} USDT</span></div>
+        <div class="bar" style="height:8px"><i class="${pct>=1?"full":""}" style="width:${(pct*100).toFixed(1)}%"></i></div>
+        <p class="desc" style="margin:0;color:var(--ink-2)">${esc(e.q.detail)}</p>
+        <dl class="kv">
+          <div><dt>資產</dt><dd class="num">${money(st?.asset)}</dd></div>
+          <div><dt>最後交易</dt><dd class="num">${st?.lastTradeAt?`${ddate(st.lastTradeAt)}（${agoDays(st.lastTradeAt)}）`:"—"}</dd></div>
+          <div><dt>本月交易天數</dt><dd class="num">${st?.tradeDays??"—"}</dd></div>
+          <div><dt>本月你的佣金</dt><dd class="num">${money(st?.commission)}</dd></div>
+          <div><dt>數據更新</dt><dd class="num">${dt(st?.updatedAt)}</dd></div>
+          <div><dt>來源</dt><dd>${st?(st.source==="api"?"BingX 自動同步":st.source==="manual"?"手動輸入":"檔案匯入"):"—"}</dd></div>
+        </dl>
+        ${f==="stat"?statForm(st):`<div class="row-actions"><button class="btn small" data-act="form" data-form="stat">手動輸入本月數據</button></div>`}
+      </section>
+
+      <section class="d-sec"><h3>BingX 即時明細</h3><div id="detail-box">${detailHTML(mem)}</div></section>
+
+      <section class="d-sec"><h3>提醒</h3>
+        ${e.alerts.length?`<ul class="alert-list">${e.alerts.map(a=>`<li style="--tone:var(--${a.tone==="mute"?"ink-3":a.tone})">${esc(a.label)}<small>${esc(a.detail)}</small></li>`).join("")}</ul>`:`<p class="desc muted" style="margin:0">目前沒有提醒。</p>`}
+      </section>
+
+      <section class="d-sec"><h3>處理紀錄</h3>
+        <div class="seg" role="group" aria-label="處理狀態">${Object.entries(HANDLING).map(([k,v])=>`<button data-hstate="${k}" aria-pressed="${(S.hDraft??h.state??"none")===k}">${v}</button>`).join("")}</div>
+        <label class="field"><span>處理備註</span><textarea id="h-note" placeholder="例如：10/27 已私訊提醒，對方說月底前會補量">${esc(h.note||"")}</textarea></label>
+        ${h.at?`<small class="muted">上次更新：${dt(h.at)}</small>`:""}
+        <div class="row-actions"><button class="btn small primary" data-act="save-handling">儲存處理紀錄</button></div>
+      </section>
+
+      <section class="d-sec"><h3>近 6 個月交易額</h3>
+        <div class="hist"><div class="th" style="bottom:${(th/maxV*100).toFixed(1)}%"><em>${n0.format(th)}</em></div>
+          ${months.map(m=>{const v=hm.get(m)?.volume;return `<div class="col" title="${m}：${v==null?"無數據":money(v)}">${v==null?'<i class="none"></i>':`<span>${v>=1000?nf.format(Math.round(v/100)/10)+"k":n0.format(v)}</span><i class="${v>=th?"ok":""}" style="height:${Math.max(v/maxV*100,2).toFixed(1)}%"></i>`}</div>`;}).join("")}
+        </div>
+        <div class="hist-labels">${months.map(m=>`<span>${m.slice(2).replace("-","/")}</span>`).join("")}</div>
+        <small class="muted">自動同步從 ${S.sync.firstSyncMonth||"開始使用的月份"} 起累積；之前月份可用手動匯入補上。</small>
+      </section>
+
+      <section class="d-sec"><h3>基本資料與配對</h3>
+        ${f==="info"?infoForm(mem):`<dl class="kv">
+          <div><dt>BingX UID</dt><dd class="mono">${esc(mem.uid||"—")} ${uidChip(mem)}</dd></div>
+          <div><dt>入群時間</dt><dd class="num">${dt(mem.joinedAt)}</dd></div>
+          <div><dt>入群時資產</dt><dd class="num">${money(mem.joinAsset)}</dd></div>
+          <div><dt>KYC</dt><dd>${esc(mem.kyc||"—")}</dd></div>
+          <div><dt>旗下用戶</dt><dd>${mem.downline==null?"—":mem.downline?"是":"否"}</dd></div>
+          <div><dt>重新入群</dt><dd>${(mem.stints||[]).length} 次</dd></div>
+        </dl>${mem.note?`<p class="note">${esc(mem.note)}</p>`:""}
+        <div class="row-actions"><button class="btn small" data-act="form" data-form="info">編輯資料</button>${mem.uid&&!mem.uidVerified?`<button class="btn small primary" data-act="verify">確認是本人</button>`:""}</div>`}
+      </section>
+
+      <section class="d-sec"><h3>群內狀態</h3>
+        ${f==="leave"?leaveForm():f==="rejoin"?rejoinForm():`<p class="desc" style="margin:0;color:var(--ink-2)">${mem.inGroup?`目前在群${mem.joinedAt?`，入群於 ${dt(mem.joinedAt)}`:""}`:`${mem.leftPrecision==="discovered"?"名單比對發現不在群":"已退群"}：${dt(mem.leftAt)}`}</p>
+        ${(mem.stints||[]).length?`<ul class="list-plain">${mem.stints.map(s=>`<li class="mono">${dt(s.joinedAt)} → ${dt(s.leftAt)}</li>`).join("")}</ul>`:""}
+        <div class="row-actions">${mem.inGroup?`<button class="btn small" data-act="form" data-form="leave">標記退群</button>`:`<button class="btn small" data-act="form" data-form="rejoin">標記重新入群</button>`}</div>`}
+      </section>
+
+      <section class="d-sec"><h3>資金紀錄（手動）</h3>
+        ${(mem.flows||[]).length?`<div class="scroll mini"><table><thead><tr><th>時間</th><th>類型</th><th class="r">金額</th></tr></thead><tbody>
+          ${[...mem.flows].reverse().slice(0,30).map(x=>`<tr><td class="mono">${dt(x.at)}</td><td>${x.type==="withdraw"?"出金":x.type==="transfer"?"劃轉":"入金"}</td><td class="r num">${money(x.amount)}</td></tr>`).join("")}</tbody></table></div>`:`<p class="desc muted" style="margin:0">沒有手動記錄的資金紀錄。</p>`}
+        ${f==="flow"?flowForm():`<div class="row-actions"><button class="btn small" data-act="form" data-form="flow">新增一筆</button></div>`}
+      </section>
+
+      <section class="d-sec"><h3>時間軸</h3>
+        ${(mem.timeline||[]).length?`<ul class="timeline">${[...mem.timeline].reverse().map(x=>`<li><time>${dt(x.at)}</time><span>${esc(x.text)}</span></li>`).join("")}</ul>`:`<p class="desc muted" style="margin:0">尚無紀錄。</p>`}
+      </section>
+
+      <div class="row-actions">${S.confirmKey==="del"?`<button class="btn danger" data-act="delete-yes">確認刪除這位會員</button><button class="btn" data-act="confirm-cancel-d">取消</button>`:`<button class="btn danger small" data-act="delete">刪除會員</button>`}</div>
+    </div>
+  </aside>`;
+  const body=dRoot.querySelector(".d-body");if(body&&scrollTop)body.scrollTop=scrollTop;
+}
+const statForm=st=>`<div class="inline-form">
+  <div class="form-row">
+    <label class="field"><span>交易額（USDT，含槓桿）</span><input type="number" id="st-vol" step="0.01" value="${st?.volume??""}"></label>
+    <label class="field"><span>交易天數</span><input type="number" id="st-days" value="${st?.tradeDays??""}"></label>
+    <label class="field"><span>目前資產</span><input type="number" id="st-asset" step="0.01" value="${st?.asset??""}"></label>
+    <label class="field"><span>最後交易時間</span><input type="datetime-local" id="st-last" value="${toInput(st?.lastTradeAt)}"></label>
+  </div>
+  <p class="note" style="margin:0">下次自動同步時，BingX 的數據會覆蓋手動輸入的值。</p>
+  <div class="row-actions"><button class="btn small primary" data-act="save-stat">儲存 ${S.month} 數據</button><button class="btn small" data-act="form" data-form="">取消</button></div></div>`;
+function infoForm(m){return `<div class="inline-form" style="border:0;padding:0">
+  <div class="form-row">
+    <label class="field"><span>群內暱稱（LINE 顯示名稱）</span><input type="text" id="i-nick" value="${esc(m.nickname||"")}"></label>
+    <label class="field"><span>BingX UID</span><input type="text" id="i-uid" value="${esc(m.uid||"")}" inputmode="numeric"></label>
+    <label class="field"><span>入群時間</span><input type="datetime-local" id="i-join" value="${toInput(m.joinedAt)}"></label>
+    <label class="field"><span>入群時資產（USDT）</span><input type="number" id="i-asset" step="0.01" value="${m.joinAsset??""}"></label>
+    <label class="field"><span>KYC 狀態</span><input type="text" id="i-kyc" value="${esc(m.kyc||"")}" placeholder="已完成／未完成"></label>
+    <label class="field"><span>是否為旗下用戶</span><select id="i-down"><option value="" ${m.downline==null?"selected":""}>未確認</option><option value="1" ${m.downline===true?"selected":""}>是</option><option value="0" ${m.downline===false?"selected":""}>否</option></select></label>
+  </div>
+  <label class="check"><input type="checkbox" id="i-ver" ${m.uidVerified?"checked":""}> 管理員已確認此 UID 是這位會員本人</label>
+  <label class="field"><span>備註</span><textarea id="i-note">${esc(m.note||"")}</textarea></label>
+  <div class="row-actions"><button class="btn small primary" data-act="save-info">儲存</button><button class="btn small" data-act="form" data-form="">取消</button></div></div>`;}
+const leaveForm=()=>`<div class="inline-form" style="border:0;padding:0"><div class="form-row">
+  <label class="field"><span>時間（台灣時間）</span><input type="datetime-local" id="l-at" value="${toInput(new Date().toISOString())}"></label>
+  <label class="field"><span>時間精確度</span><select id="l-prec"><option value="exact">確定的退群時間</option><option value="discovered">發現不在群的時間</option></select></label></div>
+  <div class="row-actions"><button class="btn small primary" data-act="save-leave">標記退群</button><button class="btn small" data-act="form" data-form="">取消</button></div></div>`;
+const rejoinForm=()=>`<div class="inline-form" style="border:0;padding:0"><div class="form-row">
+  <label class="field"><span>重新入群時間</span><input type="datetime-local" id="r-at" value="${toInput(new Date().toISOString())}"></label>
+  <label class="field"><span>入群時資產（USDT）</span><input type="number" id="r-asset" step="0.01" placeholder="選填"></label></div>
+  <div class="row-actions"><button class="btn small primary" data-act="save-rejoin">標記重新入群</button><button class="btn small" data-act="form" data-form="">取消</button></div></div>`;
+const flowForm=()=>`<div class="inline-form"><div class="form-row">
+  <label class="field"><span>時間</span><input type="datetime-local" id="fl-at" value="${toInput(new Date().toISOString())}"></label>
+  <label class="field"><span>類型</span><select id="fl-type"><option value="withdraw">出金</option><option value="transfer">劃轉</option><option value="deposit">入金</option></select></label>
+  <label class="field"><span>金額（USDT）</span><input type="number" id="fl-amt" step="0.01"></label></div>
+  <div class="row-actions"><button class="btn small primary" data-act="save-flow">新增</button><button class="btn small" data-act="form" data-form="">取消</button></div></div>`;
+function openAdd(){
+  S.openId=null;
+  dRoot.innerHTML=`<div class="scrim" data-act="close"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="a-title">
+    <div class="d-head"><div class="t"><span class="code">${nextCode()}（自動編號）</span><h2 id="a-title">入群登記</h2></div><button class="btn small" data-act="close">關閉</button></div>
+    <div class="d-body"><section class="d-sec">
+      <p class="desc" style="margin:0;color:var(--ink-2)">填寫社群暱稱與 UID。建立後下次同步會自動向 BingX 確認是否為你的邀請用戶。</p>
+      <div class="form-row">
+        <label class="field"><span>群內暱稱（必填）</span><input type="text" id="a-nick"></label>
+        <label class="field"><span>BingX UID</span><input type="text" id="a-uid" inputmode="numeric"></label>
+        <label class="field"><span>入群時間</span><input type="datetime-local" id="a-join" value="${toInput(new Date().toISOString())}"></label>
+        <label class="field"><span>入群時資產（USDT）</span><input type="number" id="a-asset" step="0.01"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="a-ver"> 管理員已確認此 UID 是這位會員本人</label>
+      <label class="field"><span>備註</span><textarea id="a-note"></textarea></label>
+      <div class="row-actions"><button class="btn primary" data-act="save-add">建立會員</button><button class="btn" data-act="close">取消</button></div>
+    </section></div></aside>`;
+  setTimeout(()=>document.getElementById("a-nick")?.focus(),30);
+}
+const val=id=>document.getElementById(id)?.value??"";
+const numOrNull=id=>{const v=val(id);return v===""?null:num(v);};
+function download(name,text,type){
+  const blob=new Blob([text],{type});const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+
+/* ---------- actions ---------- */
+async function act(a,el){
+  const mem=S.members.get(S.openId);
+  switch(a){
+    case "close":closeDrawer();break;
+    case "retry":S.loadError=null;render();guard(start);break;
+    case "logout":logout();break;
+    case "sync-now":runSync(true);break;
+    case "add":openAdd();break;
+    case "form":S.dForm=el.dataset.form||null;S.dDirty=false;renderDrawer();break;
+    case "detail-reload":if(mem)loadDetail(mem,true);break;
+    case "save-add":{
+      const nick=val("a-nick").trim();if(!nick){toast("請填寫群內暱稱。");return;}
+      const uid=val("a-uid").trim();
+      if(uid&&byUid().has(uid)){toast("這個 UID 已綁定其他會員，請先確認。");return;}
+      const joinedAt=fromInput(val("a-join"))||new Date().toISOString();
+      const ver=document.getElementById("a-ver").checked&&!!uid;
+      const m={id:newId(),code:nextCode(),nickname:nick,uid,uidVerified:ver,joinedAt,inGroup:true,leftAt:null,joinAsset:numOrNull("a-asset"),kyc:"",downline:null,note:val("a-note").trim(),handling:{state:"none"},flows:[],stints:[],timeline:[ev("join","入群登記",joinedAt)],createdAt:new Date().toISOString()};
+      await save([memberW(m)]);toast(`已建立 ${m.code} ${nick}`);closeDrawer();
+      if(validUid(uid))guard(async()=>{const r=await apiPost("sync",{ids:[m.id]});for(const [id,x] of Object.entries(r.members||{}))S.members.set(id,{...x,id});if(r.month===S.month)for(const [id,st] of Object.entries(r.stats||{}))S.stats.set(id,st);refresh();});
+      break;}
+    case "save-info":{
+      const uid=val("i-uid").trim();const other=byUid().get(uid);
+      if(uid&&other&&other.id!==mem.id){toast(`UID ${uid} 已綁定 ${other.code}，請先確認。`);return;}
+      const d=val("i-down");const ver=document.getElementById("i-ver").checked&&!!uid;
+      const changes=[];if(uid!==(mem.uid||""))changes.push(`UID ${mem.uid||"—"} → ${uid||"—"}`);if(val("i-nick").trim()!==mem.nickname)changes.push(`暱稱 ${mem.nickname} → ${val("i-nick").trim()}`);
+      if(ver&&!mem.uidVerified)changes.push("已確認本人");
+      const uidChanged=uid!==(mem.uid||"");
+      await updateMember(mem.id,{nickname:val("i-nick").trim()||mem.nickname,uid,uidVerified:ver,joinedAt:fromInput(val("i-join"))||mem.joinedAt,joinAsset:numOrNull("i-asset"),kyc:val("i-kyc").trim(),downline:uidChanged?null:(d===""?null:d==="1"),note:val("i-note").trim(),timeline:pushTL(mem,ev("edit",changes.length?changes.join("；"):"更新基本資料"))});
+      S.dForm=null;S.dDirty=false;toast("已儲存");
+      if(uidChanged&&validUid(uid)){S.detail.delete(uid);loadDetail(S.members.get(mem.id),true);}
+      renderDrawer();break;}
+    case "verify":await updateMember(mem.id,{uidVerified:true,timeline:pushTL(mem,ev("verify",`UID ${mem.uid} 已確認是本人`))});toast("已確認");renderDrawer();break;
+    case "save-handling":{
+      const state=S.hDraft??mem.handling?.state??"none",note=val("h-note").trim(),at=new Date().toISOString();
+      await updateMember(mem.id,{handling:{state,note,at},timeline:pushTL(mem,ev("handling",`處理狀態：${HANDLING[state]}${note?`（${note}）`:""}`))});
+      S.hDraft=null;S.dDirty=false;toast("處理紀錄已儲存");renderDrawer();break;}
+    case "save-stat":{
+      const v=numOrNull("st-vol");if(v==null){toast("請填寫交易額。");return;}
+      const old=S.stats.get(mem.id)||{};const at=new Date().toISOString();
+      await save([{t:"stat",month:S.month,id:mem.id,data:{...old,memberId:mem.id,month:S.month,volume:v,tradeDays:numOrNull("st-days"),asset:numOrNull("st-asset"),lastTradeAt:fromInput(val("st-last")),updatedAt:at,source:"manual",history:[...(old.history||[]),{at,volume:v,source:"manual"}].slice(-60)}},
+        memberW({...mem,timeline:pushTL(mem,ev("edit",`手動輸入 ${S.month} 交易額 ${money(v)}`))})]);
+      S.dForm=null;S.dDirty=false;toast("已儲存本月數據");renderDrawer();break;}
+    case "save-leave":{
+      const at=fromInput(val("l-at"))||new Date().toISOString(),prec=val("l-prec");
+      await updateMember(mem.id,{inGroup:false,leftAt:at,leftPrecision:prec,timeline:pushTL(mem,ev("leave",prec==="discovered"?"發現不在群（非精確退群時間）":"退群",at))});
+      S.dForm=null;toast("已標記退群");renderDrawer();break;}
+    case "save-rejoin":{
+      const at=fromInput(val("r-at"))||new Date().toISOString(),asset=numOrNull("r-asset");
+      await updateMember(mem.id,{inGroup:true,stints:[...(mem.stints||[]),{joinedAt:mem.joinedAt,leftAt:mem.leftAt}],joinedAt:at,leftAt:null,leftPrecision:null,...(asset!=null?{joinAsset:asset}:{}),timeline:pushTL(mem,ev("rejoin",`重新入群（第 ${(mem.stints||[]).length+1} 次）`,at))});
+      S.dForm=null;toast("已標記重新入群");renderDrawer();break;}
+    case "save-flow":{
+      const at=fromInput(val("fl-at")),amt=numOrNull("fl-amt"),type=val("fl-type");
+      if(!at||amt==null){toast("請填寫時間與金額。");return;}
+      await updateMember(mem.id,{flows:[...(mem.flows||[]),{at,type,amount:Math.abs(amt)}].sort((x,y)=>x.at<y.at?-1:1).slice(-500)});
+      S.dForm=null;toast("已新增資金紀錄");renderDrawer();break;}
+    case "delete":S.confirmKey="del";renderDrawer();break;
+    case "confirm-cancel-d":S.confirmKey=null;renderDrawer();break;
+    case "delete-yes":await save([{t:"delMember",id:mem.id}]);closeDrawer();S.confirmKey=null;toast("已刪除會員");break;
+    case "save-rules":{
+      const g=(id,d)=>{const v=num(val(id));return v==null||v<0?d:v;};
+      const s={threshold:g("s-threshold",5000),graceDays:g("s-grace",0),staleDays:g("s-stale",3),noTradeAfterJoinDays:g("s-nojoin",7),idleDays:g("s-idle",14),outflowHours:g("s-oh",48),outflowPct:g("s-op",80),assetDropPct:g("s-drop",50),updatedAt:new Date().toISOString()};
+      await save([{t:"config",key:"settings",data:s}]);toast("規則已儲存");break;}
+    case "roster":{
+      const t=val("roster");if(!t.trim()){toast("請先貼上目前的社群名單。");return;}
+      S.pending=planRoster(t);render();window.scrollTo({top:0,behavior:"smooth"});break;}
+    case "apply":applyPending();break;
+    case "cancel-pv":S.pending=null;render();break;
+    case "export":exportCSV();break;
+    case "backup":{
+      try{const j=await apiGet("backup");const p=tp(Date.now());delete j.ok;download(`VIP備份_${p.year}${p.month}${p.day}.json`,JSON.stringify(j,null,2),"application/json");}
+      catch(e){toast(e.message||"備份失敗");}
+      break;}
+    case "restore-cancel":S.restore=null;render();break;
+    case "restore-yes":{
+      const rs=S.restore;if(!rs||S.busy)return;S.busy=true;render();
+      try{
+        const W=[];
+        rs.members.forEach(m=>{const id=String(m.id||"");if(/^[A-Za-z0-9_.:-]{1,80}$/.test(id)){const d={...m};delete d.id;delete d.demo;W.push({t:"member",id,data:d});}});
+        rs.stats.forEach(s=>{const mid=s.memberId,mo=s.month;if(mid&&/^\d{4}-\d{2}$/.test(mo)){const d={...s};delete d.id;delete d.demo;W.push({t:"stat",month:mo,id:mid,data:d});}});
+        if(rs.settings&&Object.keys(rs.settings).length)W.push({t:"config",key:"settings",data:{...DEFAULTS,...rs.settings}});
+        W.push(importW({kind:"restore",label:"備份還原",filename:rs.filename,total:rs.members.length}));
+        await save(W);await reload();toast(`已還原 ${rs.members.length} 位會員`);S.restore=null;runSync(true);
+      }catch(e){console.warn(e);}
+      S.busy=false;render();break;}
+  }
+}
+function exportCSV(){
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const lines=[["會員編號","群內暱稱","BingX UID","邀請用戶","月份","交易額","資產","最後交易日","交易天數","達標門檻","資格狀態","群內狀態","提醒","處理狀態","數據更新"].map(q).join(",")];
+  rows().forEach(({mem,st,ev})=>lines.push([mem.code,mem.nickname,mem.uid,mem.downline==null?"":mem.downline?"是":"否",S.month,ev.vol??"",st?.asset??"",st?.lastTradeAt?ddate(st.lastTradeAt):"",st?.tradeDays??"",S.settings.threshold,ev.q.label,mem.inGroup?"在群":"不在群",ev.alerts.map(a=>a.label).join("；"),HANDLING[mem.handling?.state||"none"],st?.updatedAt?dt(st.updatedAt):""].map(q).join(",")));
+  download(`VIP名單_${S.month}.csv`,"﻿"+lines.join("\r\n"),"text/csv");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("submit",async e=>{
+  if(e.target.id!=="login-form")return;
+  e.preventDefault();
+  const t=val("login-token").trim();if(!t)return;
+  S.token=t;S.loginMsg="";
+  if(document.getElementById("login-remember").checked)lsSet(LS_TOKEN,t);
+  render();await guard(start);
+});
+document.addEventListener("click",e=>{
+  const t=e.target.closest("[data-act],[data-filter],[data-hstate],[data-open],tbody tr[data-id]");
+  if(!t)return;
+  if(t.dataset.filter){S.filter=t.dataset.filter;render();return;}
+  if(t.dataset.hstate){S.hDraft=t.dataset.hstate;S.dDirty=true;t.parentElement.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===t));return;}
+  if(t.dataset.open){e.preventDefault();location.hash="#overview";openDrawer(t.dataset.open);return;}
+  if(t.dataset.act){e.preventDefault();act(t.dataset.act,t).catch(err=>console.warn(err));return;}
+  if(t.dataset.id&&!t.closest(".drawer"))openDrawer(t.dataset.id);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&dRoot.innerHTML)closeDrawer();
+  if(e.key==="Enter"&&e.target.matches&&e.target.matches("tbody tr[data-id]"))openDrawer(e.target.dataset.id);
+});
+document.addEventListener("input",e=>{
+  if(e.target.id==="q"){S.q=e.target.value;const pos=e.target.selectionStart;render();const q=document.getElementById("q");q.focus();try{q.setSelectionRange(pos,pos);}catch{}return;}
+  if(e.target.closest(".drawer"))S.dDirty=true;
+});
+document.addEventListener("change",async e=>{
+  const id=e.target.id;
+  if(id==="month"&&e.target.value){loadMonth(e.target.value);return;}
+  if(id==="sort"){S.sort=e.target.value;render();return;}
+  if(id==="f-restore"){
+    const file=e.target.files[0];if(!file)return;
+    try{const j=JSON.parse(await file.text());
+      const members=Array.isArray(j.members)?j.members:[];const stats=Array.isArray(j.stats)?j.stats:[];
+      if(!members.length){toast("備份檔裡沒有會員資料。");return;}
+      S.restore={members,stats,settings:j.settings||null,filename:file.name};render();
+    }catch{toast("無法讀取這個檔案，請確認是備份 JSON。");}
+    return;
+  }
+  if(["f-stats","f-members","f-flows"].includes(id)){
+    const files=[...e.target.files];if(!files.length)return;
+    try{
+      let data=[];for(const f of files)data=data.concat(await readSheet(f));
+      if(!data.length){toast("檔案裡沒有資料列。");return;}
+      const name=files.length>1?`${files[0].name} 等 ${files.length} 個檔案`:files[0].name;
+      S.pending=id==="f-stats"?planStats(data,name):id==="f-members"?planMembers(data,name):planFlows(data,name);
+      render();window.scrollTo({top:0,behavior:"smooth"});
+    }catch(err){toast(err.message||"讀取檔案失敗，請確認格式。");}
+  }
+});
+function route(){const h=location.hash.slice(1);S.view=["overview","import","rules","log"].includes(h)?h:"overview";render();}
+window.addEventListener("hashchange",route);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&S.ready)guard(()=>runSync(false));});
+
+async function start(){
+  try{await reload();}
+  catch(e){if(e.code==="auth")return;S.loadError=e.message||"讀取失敗";render();return;}
+  if(!S.sync.firstSyncMonth)guard(()=>save([{t:"config",key:"sync",data:{...S.sync,firstSyncMonth:curMonth()}}]));
+  guard(()=>runSync(false));
+}
+S.token=lsGet(LS_TOKEN);
+route();
+if(S.token)guard(start);
+})();
+</script>
+</body>
+</html>
